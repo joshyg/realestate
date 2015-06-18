@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import mongoengine
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -76,11 +77,23 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': '',
+        #'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+#mongodb see http://staltz.com/djangoconfi-mongoengine/ for details
+SESSION_ENGINE = 'mongoengine.django.sessions' # optional
+_MONGODB_USER = 'webuser'
+_MONGODB_PASSWD = 'webuser'
+_MONGODB_HOST = 'localhost'
+_MONGODB_NAME = 'real_estate'
+_MONGODB_DATABASE_HOST = 'mongodb://%s:%s@%s/%s' % (_MONGODB_USER, _MONGODB_PASSWD, _MONGODB_HOST, _MONGODB_NAME)
 
+mongoengine.connect(_MONGODB_NAME, host=_MONGODB_DATABASE_HOST)
+
+AUTHENTICATION_BACKENDS = (
+    'mongoengine.django.auth.MongoEngineBackend',
+)
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/

@@ -33,13 +33,19 @@ class TruliaParser( object):
         #region parsing parameters, default is SF
         self.width=.001
         self.height=.003
+        self.zoom=19
+        # rectangular boundary of our search
         self.x_start=37.681
         self.x_end=37.810
         self.y_start=-122.51
         self.y_end=-122.350 
+        # increment may be smaller than width/height, cautious step to make sure we dont lose boundary properties
         self.x_increment=.0008
         self.y_increment=.0024
-        self.zoom=19
+        # init vars are used for when we have to stop and restart script in the middle of a scrape
+        self.x_init = self.x_start
+        self.y_init = self.y_start
+    
 
     def find_trulia_id( self, property, line ):
         if ( line.find('data-property-id=') >= 0 ):
@@ -106,12 +112,12 @@ class TruliaParser( object):
             line_re = re.search('Last sold on\s+(\S+)\s+(\d+),\s+(\d{4})</div>', line)
             if( line_re ):
                 month = months.index(str(line_re.group(1)).lower())
-                date  = int(line_re.group(2))
+                day  = int(line_re.group(2))
                 year  = int(line_re.group(3))
-                #property['sales'][0]['date'] =  str(datetime.date(year,month,date))
-                property['sales'][0]['date']  = date
+                property['sales'][0]['day']   = day
                 property['sales'][0]['month'] = month
                 property['sales'][0]['year']  = year
+                property['sales'][0]['date'] =  datetime.datetime(year,month,day, 0, 0)
                 return True
         return False
     def find_num_beds( self, property, line ):
@@ -237,7 +243,7 @@ class TruliaParser( object):
                     line_re = re.search('(\d{2})/(\d{2})/(\d{4})</div>', line)
                     if ( line_re ):
                         month = int(line_re.group(1))
-                        date = int(line_re.group(2))
+                        day = int(line_re.group(2))
                         year = int(line_re.group(3))
                     date_line = False
                     continue
@@ -247,7 +253,7 @@ class TruliaParser( object):
                         price = int( str( line_re.group(1) ).replace( ',', '' ) )
                     sale_line = False
                 if ( price != -1 and date != '' ):
-                    sale_record = { 'date' : date, 'month' : month, 'year' : year, 'price' : price }
+                    sale_record = { 'day' : day, 'month' : month, 'year' : year, 'date' : datetime.datetime(year,month,day,0,0), 'price' : price }
                     if ( sale_record not in property['sales'] ):
                         property['sales'].append( sale_record )
                         updates_made = True
@@ -326,7 +332,7 @@ class TruliaParser( object):
                 property = { 'address' : '', 'city' : '', 'state' : '',  'zip': 0, 'neighborhood' : '',
                              'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                              'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
-                             'sales' : [ {'date' : 0, 'month' : 0, 'year' : 0, 'price' : 0 } ],
+                             'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
                              'parsed_past_sales' : 0 }
             if ( self.find_trulia_id( property, line ) ):
                 continue
@@ -363,7 +369,7 @@ class TruliaParser( object):
             property = { 'address' : '', 'city' : '', 'state' : '',  'zip': 0, 'neighborhood' : '',
                                 'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                                 'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
-                                'sales' : [  { 'date' : 0, 'month' : 0, 'year': 0, 'price' : 0 } ],
+                                'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
                                 'parsed_past_sales' : 0 }
 
             bed_bath_re = re.search('(\d+)bd\s+(\d+)\s+\S+\s+ba', entry['formattedBedAndBath']) # 2bd, 2 full ba 
@@ -371,16 +377,16 @@ class TruliaParser( object):
                 property['numBeds'] =  int( bed_bath_re.group(1) )
                 property['numBaths'] = int( bed_bath_re.group(2) )
     
-            property['sales'] = [ {'date' : 0, 'month': 0, 'year': 0,'price' : 0 } ] 
+            property['sales'] = [ {'day' : 0, 'month': 0, 'year': 0, 'date' : 0, 'price' : 0 } ] 
             date_re = re.search('(\S+)\s+(\d+),\s+(\d{4})', str( entry['lastSaleDate'] ) )                            #'Jun 30, 2005',
             if ( date_re ):
                 month = months.index( str( date_re.group(1) ).lower() )
-                date  = int(date_re.group(2))
+                day  = int(date_re.group(2))
                 year  = int(date_re.group(3))
-                #property['sales'][0]['date'] =  str(datetime.date(year,month,date))
-                property['sales'][0]['date']  =  date
+                property['sales'][0]['day']  =   day
                 property['sales'][0]['month'] =  month
                 property['sales'][0]['year']  =  year
+                property['sales'][0]['date'] = datetime.datetime(year,month,day,0,0)
             property['sales'][0]['price'] = int( entry['lastSalePrice'].replace('$','').replace(',','') )    #$769,000'
 
             if( entry['formattedSqft'] != '' ):
@@ -434,7 +440,7 @@ class TruliaParser( object):
 
             self.lock.acquire()
             if ( self.x == 0 and self.y == 0 ):
-                self.x,self.y = self.x_start, self.y_start
+                self.x,self.y = self.x_init, self.y_init
             self.lock.release()
 
             while ( True ):
@@ -504,16 +510,12 @@ class TruliaParser( object):
             tmp_sales = []
             for sale in document['sales']:
                 try:
-                    date_array = sale['date'].split('-')
-                    if ( len( date_array) == 3 ):
-                        year = int(date_array[0])
-                        month = int(date_array[1])
-                        date = int(date_array[2])
-                        tmp_sales.append( { 'price' : sale['price'],
-                                            'year'  : year,
-                                            'month' : month,
-                                            'date'  : date
-                                          } )
+                    tmp_sales.append( { 'price' : sale['price'],
+                                        'year'  : sale['year'],
+                                        'month' : sale['month'],
+                                        'day'   : sale['date'],
+                                        'date'  : datetime.datetime(sale['year'],sale['month'],sale['date'],0,0)
+                                      } )
                 except:
                     pass
             if ( tmp_sales != [] ):
@@ -568,42 +570,40 @@ class TruliaParser( object):
         if ( args.write_field != '' and args.write_val != '' ):
             self.write_field( args.write_field, args.write_val )
 
-        if ( args.parse_region ):
+        if ( args.parse_region or args.find_populated_regions):
+            # If 4 coordinates are given we interpret it as the boundaries of our rectangle.
+            # If 2 are given  we interpret it as the initialization point for the default rectangle
+            coordinates = []
             coordinates = [ float(i) for i in args.coordinates ]
             if ( len( coordinates ) >= 4 ):
                 self.x_start=coordinates[0]
                 self.x_end=coordinates[1]
                 self.y_start=coordinates[2]
                 self.y_end=coordinates[3]
-            self.zoom=19
-            self.width = .001
-            self.height = .003
-            self.x_increment = .0008
-            self.y_increment = .0024
-            self.parse_region( thread )
-    
-        if ( args.find_populated_regions ):
-            # we are not updating our main collection, only the helper db populated_regions
-            self.update_properties_db = False
-            self.update_populated_regions_db = True
-            # rule of thumb: make the boundaries multiples of .05.  This will make ot easier to check if a region is populated later 
-            self.x_start = 24.55
-            self.y_start = -125.0
-            self.x_end = 49.0
-            self.y_end = -67.20
-            
+            elif ( len(coordinates) == 2 ):
+                self.x_init = coordinates[0]
+                self.y_init = coordinates[1]
+            if ( args.parse_region ):
+                self.zoom=19
+                self.width = .001
+                self.height = .003
+                self.x_increment = .0008
+                self.y_increment = .0024
+            elif ( args.find_populated_regions ):
+                # we are not updating our main collection, only the helper db populated_regions
+                self.update_properties_db = False
+                self.update_populated_regions_db = True
+                # rule of thumb: make the boundaries multiples of .05.  This will make ot easier to check if a region is populated later 
+                self.x_start = 24.55
+                self.y_start = -125.0
+                self.x_end = 49.0
+                self.y_end = -67.20
+                self.width = .1
+                self.height = .1
+                self.x_increment = .1
+                self.y_increment = .1
+                self.zoom = 13
 
-            self.width = .05
-            self.height = .05
-            self.x_increment = .05
-            self.y_increment = .05
-            self.zoom = 13
-            coordinates = [ float(i) for i in args.coordinates ]
-            if ( len( coordinates ) >= 4 ):
-                self.x_start=coordinates[0]
-                self.x_end=coordinates[1]
-                self.y_start=coordinates[2]
-                self.y_end=coordinates[3]
             self.parse_region( thread )
 
         if ( args.backup ):
@@ -612,10 +612,10 @@ class TruliaParser( object):
 if ( __name__ == '__main__' ):
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--username',            type=str, default='',              help='username for db access')
-    parser.add_argument('--password',            type=str, default='',              help='password for db access')
+    parser.add_argument('--username',            type=str, default='joshyg',        help='username for db access')
+    parser.add_argument('--password',            type=str, default='monkeyoctagon', help='password for db access')
     parser.add_argument('--host',                type=str, default='localhost',     help='host for db access, default is localhost')
-    parser.add_argument('--port',                type=str,                          help='port for db access, default is 11495')
+    parser.add_argument('--port',                type=str, default=11495,           help='port for db access, default is 11495')
     parser.add_argument('--debug',               action='store_true')
     parser.add_argument('--print_output',        action='store_true',               help='''print the output generated from file or url parsing.
                                                                                             Useful when we want to creat data files, as opposed to populating the db''')
