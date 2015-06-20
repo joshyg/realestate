@@ -300,17 +300,18 @@ class TruliaParser( object):
             self.collection.bulk_write( requests )
 
     def update_properties( self ):
+        if ( self.debug ): 
+            print 'in update_properties, property_update_array = ',
+            print self.property_update_array
         self.lock.acquire()
         if ( self.property_update_array == [] ):
             return
         requests = []
         for property in self.properties:
-            print property['address']
             for field in self.property_update_array:
                 requests.append( pymongo.UpdateOne( { 'address' : property['address'], 'zip' : property['zip'] }, { '$set' : { field : property[field] } } ) )
         self.lock.release()
         if ( requests != [] ):
-            print 'Updating!'
             self.collection.bulk_write( requests )
         
 
@@ -372,10 +373,10 @@ class TruliaParser( object):
                                 'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
                                 'parsed_past_sales' : 0 }
 
-            bed_bath_re = re.search('(\d+)bd\s+(\d+)\s+\S+\s+ba', entry['formattedBedAndBath']) # 2bd, 2 full ba 
+            bed_bath_re = re.search('(\d+)bd,\s+(\d+)\s+\S+\s+ba', entry['formattedBedAndBath']) # 2bd, 2 full ba 
             if ( bed_bath_re ):
-                property['numBeds'] =  int( bed_bath_re.group(1) )
-                property['numBaths'] = int( bed_bath_re.group(2) )
+                property['num_beds'] =  int( bed_bath_re.group(1) )
+                property['num_baths'] = int( bed_bath_re.group(2) )
     
             property['sales'] = [ {'day' : 0, 'month': 0, 'year': 0, 'date' : 0, 'price' : 0 } ] 
             date_re = re.search('(\S+)\s+(\d+),\s+(\d{4})', str( entry['lastSaleDate'] ) )                            #'Jun 30, 2005',
@@ -638,11 +639,14 @@ if ( __name__ == '__main__' ):
     parser.add_argument('--backup',              action='store_true',               help='backup main collection')
     parser.add_argument('--write_field',         type=str, default='',              help='field to write')
     parser.add_argument('--write_val',           type=str, default='',              help='value to write')
+    parser.add_argument('--write_size',          type=str, default='',              help='size of bulk writes')
     
     args = parser.parse_args()
     tt = TruliaParser(username=args.username, password=args.password, host=args.host, port=args.port)
     tt.debug = args.debug
     tt.print_output = args.print_output
+    if ( args.write_size != '' ):
+        tt.write_size = int( args.write_size ) 
     if ( args.update != None ):
         tt.property_update_array = args.update
     tt.threads = args.threads
