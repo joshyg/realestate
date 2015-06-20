@@ -1,13 +1,15 @@
 <!--[if IE]>
 <!DOCTYPE html>
 <![endif]-->
+<head>
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" media="screen">
-<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['corechart']}]}""></script>
 <script type="text/javascript" src="/static/main.js"></script>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
+</head>
 
+<body>
 <div id="main_body"> 
-    <div id="main_chart"></div>
     <div id = "main_form">
         <form action="/search/" method="post" name = "main_search" enctype="multipart/form-data" onsubmit="ajax_submit();return false;">
         {% csrf_token %}
@@ -15,5 +17,7 @@
         <br>
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
         </form>
-    </div>
-</div>
+    </div><!--main_form-->
+    <div id="main_chart" style="width: 900px; height: 500px;"></div>
+</div><!--main_body-->
+</body>

@@ -37,7 +37,7 @@ def search(request):
     for property in properties:
         for sale in property.sales:
             if ( sale.get('date','') != '' and sale.get('price', 0) != 0 ):
-                response['sales'].append( { 'price' : sale['price'], 'date' : str(sale['date']) } )
+                response['sales'].append( { 'price' : sale['price'], 'year' : sale['year'], 'month' : sale['month'], 'day' : sale['day'] } )
     print 'done iterating  over filtered properties'
     response['sales'].sort( key=lambda sale : sale.get('date', '' ) )
     print 'about to converrt to json'
