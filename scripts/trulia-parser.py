@@ -303,9 +303,9 @@ class TruliaParser( object):
         if ( self.debug ): 
             print 'in update_properties, property_update_array = ',
             print self.property_update_array
+        requests = []
         self.lock.acquire()
         if ( self.property_update_array != [] ):
-            requests = []
             for property in self.properties:
                 for field in self.property_update_array:
                     if ( field != 'sales' ):
