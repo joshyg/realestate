@@ -614,6 +614,9 @@ class TruliaParser( object):
                 self.y_increment = .0024
                 if( self.populated_regions_collection.find_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end } ) ):
                     self.populated_regions_collection.update_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end }, { '$set' : { 'fully_parsed' : 1 } } )
+                    if ( self.debug ):
+                        print 'marked region as fully parsed.'
+	
                 
             elif ( args.find_populated_regions ):
                 # we are not updating our main collection, only the helper db populated_regions
