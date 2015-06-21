@@ -103,7 +103,7 @@ class TruliaParser( object):
         elif( self.in_price_span ):
             line_re = re.search('<b>\$([\d,]+)</b>', line)
             if( line_re ):
-                property['sales'][0]['price'] = int(str(line_re.group(1)).replace(',', ''))
+                property['sales'][-1]['price'] = int(str(line_re.group(1)).replace(',', ''))
                 self.in_price_span = False
                 return True
         return False
@@ -114,10 +114,10 @@ class TruliaParser( object):
                 month = months.index(str(line_re.group(1)).lower())
                 day  = int(line_re.group(2))
                 year  = int(line_re.group(3))
-                property['sales'][0]['day']   = day
-                property['sales'][0]['month'] = month
-                property['sales'][0]['year']  = year
-                property['sales'][0]['date'] =  datetime.datetime(year,month,day, 0, 0)
+                property['sales'][-1]['day']   = day
+                property['sales'][-1]['month'] = month
+                property['sales'][-1]['year']  = year
+                property['sales'][-1]['date'] =  datetime.datetime(year,month,day, 0, 0)
                 return True
         return False
     def find_num_beds( self, property, line ):
@@ -304,12 +304,16 @@ class TruliaParser( object):
             print 'in update_properties, property_update_array = ',
             print self.property_update_array
         self.lock.acquire()
-        if ( self.property_update_array == [] ):
-            return
-        requests = []
-        for property in self.properties:
-            for field in self.property_update_array:
-                requests.append( pymongo.UpdateOne( { 'address' : property['address'], 'zip' : property['zip'] }, { '$set' : { field : property[field] } } ) )
+        if ( self.property_update_array != [] ):
+            requests = []
+            for property in self.properties:
+                for field in self.property_update_array:
+                    if ( field != 'sales' ):
+                        requests.append( pymongo.UpdateOne( { 'address' : property['address'], 'zip' : property['zip'] }, { '$set' : { field : property[field] } } ) )
+                    else:
+                        # because it is an embedded list, sales property must be dealt with differently.
+                        requests.append( pymongo.UpdateOne( { 'address' : property['address'], 'zip' : property['zip'] }, { '$push' : { field : property[field] } } ) )
+                    
         self.lock.release()
         if ( requests != [] ):
             self.collection.bulk_write( requests )
@@ -549,7 +553,24 @@ class TruliaParser( object):
         for document in self.collection.find():
             requests.append( pymongo.InsertOne( document ) )
         self.backup_collection.bulk_write( requests )
-        
+
+    def find_zips( self ):
+        zip_list = []
+        for prop in self.properties.find( {}, {'zip' : 1 } ):
+            if prop['zip'] not in zip_list:
+                zip_list.append( prop['zip']
+        return zip_list
+
+    # run once a day to get most recent updates for each zip.
+    # a little add hoc because we don't know how many pages per zip
+    # but since they are ordered by date, we really only need to f=do a few
+    def daily_update( self ):
+        for zipcode in self.find_zips():
+            for page in range( 10 ):
+                my_url = 'http://www.trulia.com/sold/zipcode_zip/%d_p'%(zipcode, page)
+                self.property_update_array.append('sales')
+                self.parse_zipsearch_url( my_url )
+    
             
     def worker( self, args={}, thread=0 ):
         if ( args.parse_json_file != '' ):
@@ -638,7 +659,8 @@ if ( __name__ == '__main__' ):
                                                                                             at a much finer granularity.''')
     parser.add_argument('coordinates',           nargs='*')
     parser.add_argument('--parse_zipsearch_url', type=str, default='',              help='parse a url provided on cmdline containing recetn sales in a given zip')
-    parser.add_argument('--collect_past_sales',  action='store_true')
+    parser.add_argument('--collect_past_sales',  action='store_true',               help='go through each property in our db whose past sales haven\'t been collected.  collect them')
+    parser.add_argument('--daily_update',        action='store_true',               help='go through each zipcode in our db and see if there has been any activity lately')
     parser.add_argument('--start_address',       type=str, default='',              help='used with collect_past_sales, tells script to only begin inspection after a certain address in the db' )
     parser.add_argument('--end_address',         type=str, default='',              help='used with collect_past_sales, tells script to complete inspection after a certain address in the db')
     parser.add_argument('--update_sales_format', action='store_true')
