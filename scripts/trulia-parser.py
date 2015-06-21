@@ -163,8 +163,8 @@ class TruliaParser( object):
         start = False
 
         self.lock.acquire()
-        properties = self.collection.find()
-        num_properties=self.collection.find().count()
+        properties = self.collection.find({'parsed_past_sales' : 0 })
+        num_properties=properties.count()
         self.lock.release()
 
         while ( True ):
@@ -210,7 +210,7 @@ class TruliaParser( object):
                 except:
                     if ( self.debug ):
                         print ('retry #%d on %s'%( retry, property['trulia_link'] ) )
-                        time.sleep(5+random.randint(0,5))
+                        time.sleep(4+random.randint(0,3))
                 
             price = -1
             date = ''
@@ -490,7 +490,7 @@ class TruliaParser( object):
                 break
             except:
                 print 'failure at %s'%my_url
-                time.sleep(5+random.randint(0,5))
+                time.sleep(4+random.randint(0,3))
 
     def parse_map_file( self, my_file ):
         r = open( my_file, 'r ')
@@ -573,23 +573,27 @@ class TruliaParser( object):
 
         if ( args.parse_region or args.find_populated_regions):
             # If 4 coordinates are given we interpret it as the boundaries of our rectangle.
+            # if 6 are given we interpret the first four as the boundaries for our rectangle, and the last two the start point (maybe we had to stop the script and restart)
             # If 2 are given  we interpret it as the initialization point for the default rectangle
             coordinates = []
             coordinates = [ float(i) for i in args.coordinates ]
             if ( len( coordinates ) >= 4 ):
-                self.x_start=coordinates[0]
-                self.x_end=coordinates[1]
-                self.y_start=coordinates[2]
-                self.y_end=coordinates[3]
+                self.x_start, self.x_end = coordinates[0], coordinates[1]
+                self.y_start, self.y_end = coordinates[2], coordinates[3]
+                self.x_init, self.y_init = self.x_start, self.y_start
+                if ( len( coordinates ) >= 6 ): 
+                    self.x_init, self.y_init = coordinates[4], coordinates[5]
             elif ( len(coordinates) == 2 ):
-                self.x_init = coordinates[0]
-                self.y_init = coordinates[1]
+                self.x_init, self.y_init = coordinates[0], coordinates[1]
             if ( args.parse_region ):
                 self.zoom=19
                 self.width = .001
                 self.height = .003
                 self.x_increment = .0008
                 self.y_increment = .0024
+                if( self.populated_regions_collection.find_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end } ) ):
+                    self.populated_regions_collection.update_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end }, { '$set' : { 'fully_parsed' : 1 } } )
+                
             elif ( args.find_populated_regions ):
                 # we are not updating our main collection, only the helper db populated_regions
                 self.update_properties_db = False
@@ -610,11 +614,15 @@ class TruliaParser( object):
         if ( args.backup ):
             self.backup()
 
+        if ( self.debug ):
+            print '%s complete'%threading.currentThread().getName()
+        return
+
 if ( __name__ == '__main__' ):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--username',            type=str, default='joshyg',        help='username for db access')
-    parser.add_argument('--password',            type=str, default='monkeyoctagon', help='password for db access')
+    parser.add_argument('--password',            type=str, default='',              help='password for db access')
     parser.add_argument('--host',                type=str, default='localhost',     help='host for db access, default is localhost')
     parser.add_argument('--port',                type=str, default=11495,           help='port for db access, default is 11495')
     parser.add_argument('--debug',               action='store_true')
@@ -645,6 +653,8 @@ if ( __name__ == '__main__' ):
     tt = TruliaParser(username=args.username, password=args.password, host=args.host, port=args.port)
     tt.debug = args.debug
     tt.print_output = args.print_output
+    if ( tt.debug ):
+        print 'Parser instantiated'
     if ( args.write_size != '' ):
         tt.write_size = int( args.write_size ) 
     if ( args.update != None ):
