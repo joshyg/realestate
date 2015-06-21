@@ -558,7 +558,7 @@ class TruliaParser( object):
         zip_list = []
         for prop in self.properties.find( {}, {'zip' : 1 } ):
             if prop['zip'] not in zip_list:
-                zip_list.append( prop['zip']
+                zip_list.append( prop['zip'] )
         return zip_list
 
     # run once a day to get most recent updates for each zip.
@@ -570,7 +570,57 @@ class TruliaParser( object):
                 my_url = 'http://www.trulia.com/sold/zipcode_zip/%d_p'%(zipcode, page)
                 self.property_update_array.append('sales')
                 self.parse_zipsearch_url( my_url )
+
+    def config_find_populated_regions( self ):
+        # we are not updating our main collection, only the helper db populated_regions
+        self.update_properties_db = False
+        self.update_populated_regions_db = True
+        # rule of thumb: make the boundaries multiples of .05.  This will make ot easier to check if a region is populated later 
+        self.x_start = 24.55
+        self.y_start = -125.0
+        self.x_end = 49.0
+        self.y_end = -67.20
+        self.width = .1
+        self.height = .1
+        self.x_increment = .1
+        self.y_increment = .1
+        self.zoom = 13
     
+    def config_parse_region( self ):
+        self.zoom        = 19
+        self.width       = .001
+        self.height      = .003
+        self.x_increment = .0008
+        self.y_increment = .0024
+
+    def config_hipri_region( self ):
+        region = db.populated_regions.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 1, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
+        self.x_start = region['x_start']
+        self.x_end   = region['x_end']
+        self.y_start = region['y_start']
+        self.y_end   = region['y_end']
+        self.x_init  = region['x_init']
+        self.y_init  = region['y_init']
+        self.zoom=19
+        self.width = .001
+        self.height = .003
+        self.x_increment = .0008
+        self.y_increment = .0024
+
+    def parse_coordinate( self, input_coordinates ):
+        # If 4 coordinates are given we interpret it as the boundaries of our rectangle.
+        # if 6 are given we interpret the first four as the boundaries for our rectangle, and the last two the start point (maybe we had to stop the script and restart)
+        # If 2 are given  we interpret it as the initialization point for the default rectangle
+        coordinates = []
+        coordinates = [ float(i) for i in input_coordinates ]
+        if ( len( coordinates ) >= 4 ):
+            self.x_start, self.x_end = coordinates[0], coordinates[1]
+            self.y_start, self.y_end = coordinates[2], coordinates[3]
+            self.x_init, self.y_init = self.x_start, self.y_start
+            if ( len( coordinates ) >= 6 ): 
+                self.x_init, self.y_init = coordinates[4], coordinates[5]
+        elif ( len(coordinates) == 2 ):
+            self.x_init, self.y_init = coordinates[0], coordinates[1]
             
     def worker( self, args={}, thread=0 ):
         if ( args.parse_json_file != '' ):
@@ -592,48 +642,26 @@ class TruliaParser( object):
         if ( args.write_field != '' and args.write_val != '' ):
             self.write_field( args.write_field, args.write_val )
 
-        if ( args.parse_region or args.find_populated_regions):
-            # If 4 coordinates are given we interpret it as the boundaries of our rectangle.
-            # if 6 are given we interpret the first four as the boundaries for our rectangle, and the last two the start point (maybe we had to stop the script and restart)
-            # If 2 are given  we interpret it as the initialization point for the default rectangle
-            coordinates = []
-            coordinates = [ float(i) for i in args.coordinates ]
-            if ( len( coordinates ) >= 4 ):
-                self.x_start, self.x_end = coordinates[0], coordinates[1]
-                self.y_start, self.y_end = coordinates[2], coordinates[3]
-                self.x_init, self.y_init = self.x_start, self.y_start
-                if ( len( coordinates ) >= 6 ): 
-                    self.x_init, self.y_init = coordinates[4], coordinates[5]
-            elif ( len(coordinates) == 2 ):
-                self.x_init, self.y_init = coordinates[0], coordinates[1]
+        if ( args.parse_region or args.parse_hipri_region or args.find_populated_regions ):
+            
+            coordinates = self.parse_coordinates ( args.coordinates )
+
             if ( args.parse_region ):
-                self.zoom=19
-                self.width = .001
-                self.height = .003
-                self.x_increment = .0008
-                self.y_increment = .0024
+                self.config_parse_region()
+
+            elif( args.parse_hipri_region ):
+                self.config_hipri_region()
+                
+            elif ( args.find_populated_regions ):
+                self.config_find_populated_regions()
+
+            self.parse_region( thread )
+
+            if ( args.parse_region or args.parse_hipri_region ):
                 if( self.populated_regions_collection.find_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end } ) ):
                     self.populated_regions_collection.update_one( { 'x_start' : self.x_start, 'y_start' : self.y_start,'x_end' : self.x_end, 'y_end' : self.y_end }, { '$set' : { 'fully_parsed' : 1 } } )
                     if ( self.debug ):
                         print 'marked region as fully parsed.'
-	
-                
-            elif ( args.find_populated_regions ):
-                # we are not updating our main collection, only the helper db populated_regions
-                self.update_properties_db = False
-                self.update_populated_regions_db = True
-                # rule of thumb: make the boundaries multiples of .05.  This will make ot easier to check if a region is populated later 
-                self.x_start = 24.55
-                self.y_start = -125.0
-                self.x_end = 49.0
-                self.y_end = -67.20
-                self.width = .1
-                self.height = .1
-                self.x_increment = .1
-                self.y_increment = .1
-                self.zoom = 13
-
-            self.parse_region( thread )
 
         if ( args.backup ):
             self.backup()
@@ -656,6 +684,8 @@ if ( __name__ == '__main__' ):
     parser.add_argument('--parse_map_file',      type=str, default='',              help='parse a file base on the output of a trulia map url')
     parser.add_argument('--parse_region',        action='store_true',               help='''parse a region delimited by 4 input paramaters: x_start, y_start, x_end, y_end,
                                                                                             where start point SW and end point is NE''')
+    parser.add_argument('--parse_hipri_region',  action='store_true',               help='''parse a region that has priority = 1.  Selection is random''' )
+    
     parser.add_argument('--find_populated_regions',        action='store_true',     help='''parse a region delimited by 4 input paramaters: x_start, y_start, x_end, y_end,
                                                                                             where start point SW and end point is NE.  Determine if subregion within the region has any population at all
                                                                                             If it does we add it to the populated regions collection.  Later we will iterate over each region in this collection
