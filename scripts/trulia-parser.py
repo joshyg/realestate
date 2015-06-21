@@ -594,7 +594,7 @@ class TruliaParser( object):
         self.y_increment = .0024
 
     def config_hipri_region( self ):
-        region = self.populated_regions_collection.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 1, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
+        region = self.populated_regions_collection.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 0, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
         self.x_start = region['x_start']
         self.x_end   = region['x_end']
         self.y_start = region['y_start']
