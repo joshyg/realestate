@@ -190,7 +190,7 @@ class TruliaParser( object):
                     # whether parsing has begun and, if not, declare that it has begun before parsing.
                     # At some point I should also write a method to look for properties that began
                     # but never finished, possibly due to a lost connection or some other bug.
-                    property = self.properties.find_one_and_update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 1 } } )
+                    property = self.collection.find_one_and_update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 1 } } )
                     if ( property ):
                         property_found = True
                     break
