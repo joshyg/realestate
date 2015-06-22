@@ -177,12 +177,22 @@ class TruliaParser( object):
             if ( count >= num_properties ):
                 self.lock.release()
                 break
+            if ( properties[count]['parsed_past_sales'] == 1 ):
+                self.lock.release()
+                continue
             # I have seen unexplainable transient db access errors
             # adding retry mechanism until issue is root caused.
             for i in range( 5 ):
                 try:
                     property = properties[count]
-                    property_found = True
+                    # multiple instances of this script may be running on multiple machines.
+                    # In order to avoid reparsing the same property, I need to atomically check
+                    # whether parsing has begun and, if not, declare that it has begun before parsing.
+                    # At some point I should also write a method to look for properties that began
+                    # but never finished, possibly due to a lost connection or some other bug.
+                    property = self.properties.find_one_and_update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 1 } } )
+                    if ( property ):
+                        property_found = True
                     break
                 except:
                     print 'db access error on property #%d'%count
@@ -190,7 +200,7 @@ class TruliaParser( object):
             # critical section end
 
             if ( not property_found ):
-                break
+                continue
             if ( start_address != ''):
                 if ( property['address'] == start_address ):
                     start = True
@@ -201,16 +211,24 @@ class TruliaParser( object):
                     break
             if ( property['parsed_past_sales'] == 1 ):
                 continue
+            
             req = url.Request('http://www.trulia.com%s' % property['trulia_link'])
             req.add_header('User-agent', 'Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11')
+            url_found=False
             for retry in range(5):
                 try:
                     r = url.urlopen(req)
+                    url_found=True
                     break
                 except:
                     if ( self.debug ):
                         print ('retry #%d on %s'%( retry, property['trulia_link'] ) )
                         time.sleep(4+random.randint(0,3))
+
+            if ( not url_found ):
+                self.properties.update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 0 } } )
+                continue
+
                 
             price = -1
             date = ''
@@ -590,8 +608,8 @@ class TruliaParser( object):
         self.zoom        = 19
         self.width       = .001
         self.height      = .003
-        self.x_increment = .0008
-        self.y_increment = .0024
+        self.x_increment = .0009
+        self.y_increment = .0027
 
     def config_hipri_region( self ):
         region = self.populated_regions_collection.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 0, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
