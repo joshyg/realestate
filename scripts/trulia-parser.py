@@ -162,42 +162,27 @@ class TruliaParser( object):
         requests = []
         start = False
 
-        self.lock.acquire()
-        properties = self.collection.find({'parsed_past_sales' : 0 })
-        num_properties=properties.count()
-        self.lock.release()
-
-        while ( True ):
+        for property in  self.collection.find({'parsed_past_sales' : 0 }):
             property_found = False
 
-            # critical section begin
-            self.lock.acquire()
-            count = self.count
-            self.count += 1
-            if ( count >= num_properties ):
-                self.lock.release()
-                break
-            if ( properties[count]['parsed_past_sales'] == 1 ):
-                self.lock.release()
+            if ( property['parsed_past_sales'] == 1 ):
                 continue
+
             # I have seen unexplainable transient db access errors
             # adding retry mechanism until issue is root caused.
             for i in range( 5 ):
                 try:
-                    property = properties[count]
                     # multiple instances of this script may be running on multiple machines.
                     # In order to avoid reparsing the same property, I need to atomically check
                     # whether parsing has begun and, if not, declare that it has begun before parsing.
                     # At some point I should also write a method to look for properties that began
                     # but never finished, possibly due to a lost connection or some other bug.
-                    property = self.collection.find_one_and_update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 1 } } )
+                    property = self.collection.find_one_and_update( { '_id' : property['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 1 } } )
                     if ( property ):
                         property_found = True
                     break
                 except:
                     print 'db access error on property #%d'%count
-            self.lock.release()
-            # critical section end
 
             if ( not property_found ):
                 continue
@@ -212,6 +197,8 @@ class TruliaParser( object):
             if ( property['parsed_past_sales'] == 1 ):
                 continue
             
+            if ( self.debug ):
+                print 'parsing %s'%property['trulia_link']
             req = url.Request('http://www.trulia.com%s' % property['trulia_link'])
             req.add_header('User-agent', 'Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11')
             url_found=False
@@ -356,7 +343,7 @@ class TruliaParser( object):
                              'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                              'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
                              'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
-                             'parsed_past_sales' : 0 }
+                             'parsed_past_sales' : 0, 'parsing_past_sale' : 0  }
             if ( self.find_trulia_id( property, line ) ):
                 continue
             if ( self.find_state( property, line ) ):
@@ -393,7 +380,7 @@ class TruliaParser( object):
                                 'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                                 'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
                                 'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
-                                'parsed_past_sales' : 0 }
+                                'parsed_past_sales' : 0, 'parsing_past_sale' : 0  }
 
             bed_bath_re = re.search('(\d+)bd,\s+(\d+)\s+\S+\s+ba', entry['formattedBedAndBath']) # 2bd, 2 full ba 
             if ( bed_bath_re ):
