@@ -250,6 +250,7 @@ class TruliaParser( object):
                         month = int(line_re.group(1))
                         day = int(line_re.group(2))
                         year = int(line_re.group(3))
+                        date = datetime.datetime(year,month,day,0,0)
                     date_line = False
                     continue
                 if( sale_line ):
@@ -258,7 +259,7 @@ class TruliaParser( object):
                         price = int( str( line_re.group(1) ).replace( ',', '' ) )
                     sale_line = False
                 if ( price != -1 and date != '' ):
-                    sale_record = { 'day' : day, 'month' : month, 'year' : year, 'date' : datetime.datetime(year,month,day,0,0), 'price' : price }
+                    sale_record = { 'day' : day, 'month' : month, 'year' : year, 'date' : date, 'price' : price }
                     if ( sale_record not in property['sales'] ):
                         property['sales'].append( sale_record )
                         updates_made = True
