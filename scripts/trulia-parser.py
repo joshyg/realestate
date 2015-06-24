@@ -213,7 +213,7 @@ class TruliaParser( object):
                         time.sleep(4+random.randint(0,3))
 
             if ( not url_found ):
-                self.properties.update( { '_id' : properties[count]['_id'], 'parsing_past_sales' : 0 }, { '$set' : { 'parsing_past_sales' : 0 } } )
+                self.collection.update( { '_id' : property['_id'] }, { '$set' : { 'parsing_past_sales' : 0 } } )
                 continue
 
                 
