@@ -344,7 +344,7 @@ class TruliaParser( object):
                              'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                              'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
                              'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
-                             'parsed_past_sales' : 0, 'parsing_past_sale' : 0  }
+                             'parsed_past_sales' : 0, 'parsing_past_sales' : 0  }
             if ( self.find_trulia_id( property, line ) ):
                 continue
             if ( self.find_state( property, line ) ):
@@ -381,7 +381,7 @@ class TruliaParser( object):
                                 'sqft' : 0, 'num_beds' : 0, 'num_baths' : 0, 'num_park' : 0,
                                 'trulia_id' : 0, 'trulia_link' : '', 'latitude' : 0, 'longitude' : 0, 'type' : '',
                                 'sales' : [  { 'day' : 0, 'month' : 0, 'year': 0, 'date' : 0, 'price' : 0 } ],
-                                'parsed_past_sales' : 0, 'parsing_past_sale' : 0  }
+                                'parsed_past_sales' : 0, 'parsing_past_sales' : 0  }
 
             bed_bath_re = re.search('(\d+)bd,\s+(\d+)\s+\S+\s+ba', entry['formattedBedAndBath']) # 2bd, 2 full ba 
             if ( bed_bath_re ):
