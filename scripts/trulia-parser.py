@@ -31,6 +31,7 @@ class TruliaParser( object):
         self.count=0
 
         #region parsing parameters, default is SF
+        self.region_configured = False
         self.width=.001
         self.height=.003
         self.zoom=19
@@ -621,18 +622,22 @@ class TruliaParser( object):
         self.y_increment = .0027
 
     def config_hipri_region( self ):
-        region = self.populated_regions_collection.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 0, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
-        self.x_start = region['x_start']
-        self.x_end   = region['x_end']
-        self.y_start = region['y_start']
-        self.y_end   = region['y_end']
-        self.x_init  = region['x_start']
-        self.y_init  = region['y_start']
-        self.zoom=19
-        self.width = .001
-        self.height = .003
-        self.x_increment = .0008
-        self.y_increment = .0024
+        self.lock.acquire()
+        if ( not self.region_configured ):
+            region = self.populated_regions_collection.find_one_and_update ( { 'priority' : 1, 'fully_parsed' : 0, 'processing_begun' : 0 }, { '$set' : { 'processing_begun' : 1 } } )
+            self.x_start = region['x_start']
+            self.x_end   = region['x_end']
+            self.y_start = region['y_start']
+            self.y_end   = region['y_end']
+            self.x_init  = region['x_start']
+            self.y_init  = region['y_start']
+            self.zoom=19
+            self.width = .001
+            self.height = .003
+            self.x_increment = .0008
+            self.y_increment = .0024
+            self.region_configured = True
+        self.lock.release()
 
     def parse_coordinates( self, input_coordinates ):
         # If 4 coordinates are given we interpret it as the boundaries of our rectangle.
