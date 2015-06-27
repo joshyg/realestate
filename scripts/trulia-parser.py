@@ -553,6 +553,7 @@ class TruliaParser( object):
         self.collection.bulk_write( requests )
 
     def backup(self):
+        # backup main properties db
         self.backup_collection = self.db['backup']
         self.backup_collection.remove()
         requests = []
@@ -564,6 +565,18 @@ class TruliaParser( object):
                 self.backup_collection.bulk_write( requests )
                 requests = []
         self.backup_collection.bulk_write( requests )
+
+        # backup populated_regions db
+        requests = []
+        self.backup_populated_regions_collection = self.db['backup_populated_regions']
+        for document in self.populated_regions_collection.find():
+            requests.append( pymongo.InsertOne( document ) )
+            if ( len( requests ) >= self.write_size ):
+                if ( self.debug ):
+                    print 'BULK WRITE!'
+                self.backup_populated_regions_collection.bulk_write( requests )
+                requests = []
+        self.backup_populated_regions_collection.bulk_write( requests )
 
     def find_zips( self ):
         zip_list = []
