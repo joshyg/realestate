@@ -208,7 +208,7 @@ class TruliaParser( object):
                     r = url.urlopen(req)
                     url_found=True
                     break
-                except:
+                except url.HTTPError:
                     if ( self.debug ):
                         print ('retry #%d on %s'%( retry, property['trulia_link'] ) )
                         time.sleep(4+random.randint(0,3))
@@ -502,7 +502,7 @@ class TruliaParser( object):
                             if( self.update_properties_db ):
                                 self.parse_json( json.loads( line ) ) 
                 break
-            except:
+            except url.HTTPError:
                 print 'failure at %s'%my_url
                 time.sleep(4+random.randint(1,3)*retry)
 
