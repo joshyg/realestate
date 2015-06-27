@@ -405,15 +405,18 @@ class TruliaParser( object):
             else:
                 property['sqft'] = 0
 
-            property['city'] = entry['city'].lower()#'San Francisco'
-            property['county'] = entry['county'].lower()# 'San Francisco',
-            property['latitude'] = entry['latitude']                                                         #37.751404
-            property['longitude'] = entry['longitude']                                                       #-122.40685
-            property['trulia_link'] = entry['pdpURL']                                                        #'/homes/California/San_Francisco/sold/26697877-2964-25th-St-302-San-Francisco-CA-94110',
-            property['address'] = entry['shortDescription'].lower()                                          #'2964 25th St #302',
-            property['state'] = states.index( entry['stateCode'].lower() )                                   #'CA',
-            property['type'] = entry['typeDisplay'].lower()                                                  #'Condo',
-            property['zip'] = int( entry['zipCode'] )                                                        #'94110'
+            property['city'] = entry.get('city', '').lower()#'San Francisco'
+            property['county'] = entry.get('county','').lower()# 'San Francisco',
+            property['latitude'] = entry.get('latitude', 0)                                                         #37.751404
+            property['longitude'] = entry.get('longitude', 0)                                                      #-122.40685
+            property['trulia_link'] = entry.get('pdpURL', '')                                                       #'/homes/California/San_Francisco/sold/26697877-2964-25th-St-302-San-Francisco-CA-94110',
+            property['address'] = entry.get('shortDescription', '').lower()                                          #'2964 25th St #302',
+            if (  entry.get('stateCode', None) != None ):
+                property['state'] = states.index( entry['stateCode'].lower() )                                   #'CA',
+            else:
+                property['state'] = 51
+            property['type'] = entry.get('typeDisplay', '').lower()                                                  #'Condo',
+            property['zip'] = int( entry.get('zipCode', 0) )                                                        #'94110'
             if ( entry.get('neighborhood', None) != None ):
                 property['neighborhood'] = entry['neighborhood'].lower()                                     #Mission
             else:
