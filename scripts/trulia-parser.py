@@ -558,6 +558,11 @@ class TruliaParser( object):
         requests = []
         for document in self.collection.find():
             requests.append( pymongo.InsertOne( document ) )
+            if ( len( requests ) >= self.write_size ):
+                if ( self.debug ):
+                    print 'BULK WRITE!'
+                self.backup_collection.bulk_write( requests )
+                requests = []
         self.backup_collection.bulk_write( requests )
 
     def find_zips( self ):
