@@ -500,7 +500,7 @@ class TruliaParser( object):
                 break
             except:
                 print 'failure at %s'%my_url
-                time.sleep(4+random.randint(0,3))
+                time.sleep(4+random.randint(1,3)*retry)
 
     def parse_map_file( self, my_file ):
         r = open( my_file, 'r ')
