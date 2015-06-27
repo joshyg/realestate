@@ -1,14 +1,6 @@
 from django.db.models import *
 from mongoengine import *
 
-# Create your models here.
-#class Sales( EmbeddedDocument ):
-#    date  = DateField()
-#    price = IntField()
-#    day = IntField()
-#    month = IntField()
-#    year = IntField()
-
 class Properties( Document ):
     city = StringField(max_length = 30)
     neighborhood = StringField(max_length = 30)
@@ -23,6 +15,7 @@ class Properties( Document ):
     latitude = IntField()
     type = StringField(max_length = 30)
     parsed_past_sales = IntField()
+    parsing_past_sales = IntField()
     num_beds  = IntField( default=0 )
     num_baths = IntField( default=0 )
     num_park = IntField( default=0 )
