@@ -208,9 +208,9 @@ class TruliaParser( object):
                     r = url.urlopen(req)
                     url_found=True
                     break
-                except url.HTTPError:
+                except url.HTTPError, e:
                     if ( self.debug ):
-                        print ('retry #%d on %s'%( retry, property['trulia_link'] ) )
+                        print ('HTTP failure %d  on %s'%( e.code, property['trulia_link'] ) )
                         time.sleep(4+random.randint(0,3))
 
             if ( not url_found ):
@@ -502,8 +502,8 @@ class TruliaParser( object):
                             if( self.update_properties_db ):
                                 self.parse_json( json.loads( line ) ) 
                 break
-            except url.HTTPError:
-                print 'failure at %s'%my_url
+            except url.HTTPError, e:
+                print 'HTTP failure %d at %s'%(e.code, my_url)
                 time.sleep(4+random.randint(1,3)*retry)
 
     def parse_map_file( self, my_file ):
