@@ -1,33 +1,45 @@
 var serverdata;
+sales_array = new Array();;
+var num_datasets = 0;
 google.load("visualization", "1", {packages:["corechart"]});
-google.setOnLoadCallback(drawChart);
+google.setOnLoadCallback(draw_chart);
 
-function drawChart() {
+function init_page() {
+    sales_array[0] = ['Date']
+    for ( var year = 1990; year <= 2015; year++ ) {
+        for ( var month = 1; month <= 12; month++ ) {
+            sales_array.push( [ month+'/'+year ] );
+        }
+    }
+}
+
+function draw_chart() {
     console.log('in draw chart');
+    console.log('initial sales_array')
+    console.log(sales_array);
     if ( serverdata ) {
-        sales_array = new Array();
-        sales_array.push( [ 'Date', 'Price' ] );
+        var sales_array_index=0; 
+        sales_array[0].push( new String ( serverdata.zip ) );
         for (i in serverdata.sales) {
-            if (  serverdata.sales[i].price  < 5000000 ) {
-                sales_array.push( [ new Date( serverdata.sales[i].year, serverdata.sales[i].month, serverdata.sales[i].day), serverdata.sales[i].price ] );
-            }
+            sales_array_index += 1; 
+            console.log( sales_array[sales_array_index] );
+            sales_array[sales_array_index].push( serverdata.sales[i].avg_price );
         }  
+        console.log('sales_array')
+        console.log(sales_array);
         var data = google.visualization.arrayToDataTable( sales_array );
-        var formatter_short = new google.visualization.DateFormat({formatType: 'short'});
-        formatter_short.format(data, 0);
-        console.log('date formatted.');
 
         
         var options = {
           title: 'Sales vs. Time',
           hAxis: {title: 'Sales'},
-          vAxis: {title: 'Price', minValue: 0, maxValue: 5000000},
-          legend: 'none'
+          vAxis: {title: 'Price'},
+          curveType: 'function',
+          legend: { position: 'bottom' }
         };
       
         if ( serverdata.sales.length >= 1 ){
-            var chart = new google.visualization.ScatterChart(document.getElementById('main_chart'));
-            console.log(chart);
+            var chart = new google.visualization.LineChart(document.getElementById('main_chart'));
             chart.draw(data, options);
         }
     }
@@ -41,7 +53,7 @@ function ajax_submit(){
         if (req.readyState==4 && req.status==200){
             document.getElementById('main_chart');
             serverdata = eval( '(' + req.responseText + ')');
-            drawChart()
+            draw_chart()
         }
     }
 

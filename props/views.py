@@ -21,6 +21,12 @@ from props.models import *
 
 # Create your views here.
 
+#
+#convert month/year into index in our response['sales'] array
+#
+def periodToIndex( year, month ):
+    return 12*(year - 1990) + month
+
 def main(request={}):
     csrf_request = {}
     response = render_to_response('main.html',  csrf_request,context_instance=RequestContext(request))
@@ -30,17 +36,28 @@ def search(request):
     print 'in views.search'
     response = {}
     response['sales'] = []
+
+    for yr in range(1990,2016):
+        for month in range(1,13):
+            response['sales'].append({ 'period': '%d-%d'%(yr,month), 'count': 0, 'total_price': 0, 'avg_price': 0 })
+
     zipcode = int(request.GET.get( 'zip', 0 ))
+    # send back the zipcode from the request
+    response['zip'] = zipcode
     print 'zip = %s'%zipcode
+
     properties = Properties.objects.filter( zip = zipcode )  
-    print 'about to iterate over filtered properties'
+    print 'about to iterate over properties'
     for property in properties:
         for sale in property.sales:
             if ( sale.get('date','') != '' and sale.get('price', 0) != 0 ):
-                response['sales'].append( { 'price' : sale['price'], 'year' : sale['year'], 'month' : sale['month'], 'day' : sale['day'] } )
+                response['sales'][periodToIndex(sale['year'], sale['month'])]['total_price'] += sale['price']
+                response['sales'][periodToIndex(sale['year'], sale['month'])]['count'] += 1
+    for period in range( len( response['sales'] ) ):
+        if ( response['sales'][period]['count'] != 0 ):
+            response['sales'][period]['avg_price'] = response['sales'][period]['total_price']/response['sales'][period]['count']
+
     print 'done iterating  over filtered properties'
-    response['sales'].sort( key=lambda sale : sale.get('date', '' ) )
-    print 'about to converrt to json'
     json_str = json.dumps(response)
     print 'converrted to json'
     if ( sys.version_info > (2, 7) ):
