@@ -5,16 +5,16 @@
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" media="screen">
 <script type="text/javascript" src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['corechart']}]}""></script>
 <script type="text/javascript" src="/static/main.js"></script>
+<link rel="stylesheet" id="csslink" type="text/css" href="/static/main.css" />
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
 </head>
 
-<body onload="init_page()">
+<body onload="init_page()" background="/static/Painted_ladies.png">
 <div id="main_body"> 
-    <div id = "main_form">
+    <div id = "main_form" align="center" class="frontpage_form">
         <form action="/search/" method="post" name = "main_search" enctype="multipart/form-data" onsubmit="ajax_submit();return false;">
         {% csrf_token %}
-        Zip Code: <input type="text" class="input-block-level" name="search_term">
-        <br>
+        <input type="text" class="input-block-level" name="search_term">
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
         </form>
     </div><!--main_form-->

@@ -73,7 +73,8 @@ function ajax_submit(){
     //response received function
     req.onreadystatechange=function(){
         if (req.readyState==4 && req.status==200){
-            document.getElementById('main_chart');
+            document.body.background="";
+            document.getElementById("main_form").className = "results_form";
             serverdata = eval( '(' + req.responseText + ')');
             draw_chart()
         }
