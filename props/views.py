@@ -35,6 +35,7 @@ class QueryTracker(object):
         self.request = request
         self.response = {}
         self.query_dict = {}
+        self.start_year = 1993
 
     def initSalesList( self ):
         print 'in initSalesList'
@@ -43,7 +44,7 @@ class QueryTracker(object):
         current_yr=int(now[0])
         current_month=int(now[1])
         print 'current period = %d/%d'%(current_month, current_yr)
-        for yr in range(1990,current_yr + 1):
+        for yr in range(self.start_year,current_yr + 1):
             for month in range(1,13):
                 if ( current_yr <= yr and current_month < month ):
                     break
@@ -56,8 +57,8 @@ class QueryTracker(object):
             for sale in property.sales:
                 print sale
                 if ( sale.get('date','') != '' and sale.get('price', 0) != 0 ):
-                    self.response['sales'][periodToIndex(sale['year'], sale['month'])]['total_price'] += sale['price']
-                    self.response['sales'][periodToIndex(sale['year'], sale['month'])]['count'] += 1
+                    self.response['sales'][self.periodToIndex(sale['year'], sale['month'])]['total_price'] += sale['price']
+                    self.response['sales'][self.periodToIndex(sale['year'], sale['month'])]['count'] += 1
         print 'about to calculate avg and roi'
         for period in range( len( self.response['sales'] ) ):
             if ( self.response['sales'][period]['count'] != 0 ):
@@ -133,8 +134,8 @@ class QueryTracker(object):
             print 'no filter!'
             self.properties = []
 
-def periodToIndex( year, month ):
-    return 12*(year - 1990) + month - 1
+    def periodToIndex( self, year, month ):
+        return 12*(year - self.start_year) + month - 1
 
 def main(request={}):
     csrf_request = {}
