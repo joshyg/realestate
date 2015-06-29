@@ -417,7 +417,13 @@ class TruliaParser( object):
             else:
                 property['state'] = 51
             property['type'] = str(entry.get('typeDisplay', '')).lower()                                                  #'Condo',
-            property['zip'] = int( entry.get('zipCode', 0) )                                                        #'94110'
+
+            # if zipcode is null string we can't convert to int
+            zipcode =  entry.get('zipCode', 0)
+            try:
+                property['zip'] = int( zipcode )                                                        #'94110'
+            except:
+                property['zip'] = str( zipcode )
             if ( entry.get('neighborhood', None) != None ):
                 property['neighborhood'] = str(entry['neighborhood']).lower()                                     #Mission
             else:
