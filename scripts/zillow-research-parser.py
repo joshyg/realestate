@@ -59,7 +59,18 @@ class ZillowParser( object ):
             dates_document = { 'dates_document' : 1 } # store all date arrays for a data type in a single document.  There should be one for each time series csv
             path = '%s/%s'%(self.directory,data)
             self.collection = self.__dict__[ self.collection_dict[data] ]
+            begin_parsing = False
+            if ( self.start_file == '' ):
+                begin_parsing = True
             for file in sh.ls(path):
+
+                # dont begin parsing until we reach our start file
+                # allows script to continue in middle of parse when interrupted
+                if( file == self.start_file ):
+                    begin_parsing = True
+                if ( not begin_parsing ):
+                    continue 
+
                 time_series = 'undetermined'
                 file = file.replace('\n', '')
                 if ( self.debug ):
@@ -165,11 +176,14 @@ if ( __name__ == '__main__' ):
     parser.add_argument('--unzip_files',         action='store_true',               help='unzip zip files downloaded from zillow in directory specified in --directory or pwd if no directory specified')
     parser.add_argument('--parse_files',         action='store_true',               help='parse csv files in unzipped directories under --directory ( or pwd ), populate/update db')
     parser.add_argument('--directory',           type=str, default='.',             help='directory to store/retrieve zip/csv files')
+    parser.add_argument('--start_at',            type=str, default='',              help='begin populating db when you reach this file')
 
     args = parser.parse_args()
     zp = ZillowParser(username=args.username, password=args.password, host=args.host, port=int(args.port))
     zp.debug = args.debug
     zp.directory = args.directory
+    zp.start_file = args.start_at
+
     if ( zp.debug ):
         print 'Parser instantiated'
     if ( args.download_zips ):
