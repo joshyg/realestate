@@ -66,13 +66,13 @@ class ZillowParser( object ):
 
                 # dont begin parsing until we reach our start file
                 # allows script to continue in middle of parse when interrupted
+                file = file.replace('\n', '')
                 if( file == self.start_file ):
                     begin_parsing = True
                 if ( not begin_parsing ):
                     continue 
 
                 time_series = 'undetermined'
-                file = file.replace('\n', '')
                 if ( self.debug ):
                     print 'inspecting %s'%file
 
