@@ -99,7 +99,7 @@ class ZillowParser( object ):
                         # Note: the fieldnames list keeps the keys in order.  line.keys() or line.iteritems() does not
                         for field in fh_dr.fieldnames:
                             if ( time_series != 'undetermined' and re.search('\d{4}-\d{2}', field) ):
-                                document[time_series].append( line[field] )
+                                document[time_series].append( self.format( line[field] ) )
                             else:
                                 document[field] = line[field].lower()
 
@@ -128,6 +128,14 @@ class ZillowParser( object ):
             if ( self.debug ):
                 print 'inserting dates document'
             self.collection.update_one( { 'dates_document' : 1 }, { '$set' :  dates_document } )
+
+
+    def format( self, entry ):
+        if ( re.search( '^ *\d+ *$', entry ) ):
+            return int( entry )
+        elif ( re.search('^ *\d+\.\d+ *$', entry) ):
+            return float( entry )
+        return entry
 
     def save_documents( self, documents, time_series ):
         requests = []
