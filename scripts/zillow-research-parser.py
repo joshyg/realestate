@@ -144,7 +144,6 @@ class ZillowParser( object ):
             if ( self.debug ):
                 print 'BULK WRITE!'
             self.collection.bulk_write( requests )
-            time.sleep( 5 )
     
 
 if ( __name__ == '__main__' ):
