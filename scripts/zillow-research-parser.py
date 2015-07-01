@@ -25,7 +25,7 @@ class ZillowParser( object ):
         self.zips = self.db['zips'] # will be created if it doesn't already exist
         self.neighborhoods = self.db['neighborhoods'] # will be created if it doesn't already exist
         self.debug = False
-        self.write_size = 50
+        self.write_size = 5
         self.data_types = [ 'State', 'Metro', 'County', 'City', 'Zip', 'Neighborhood' ] 
         self.collections = [ 'states', 'metros', 'counties', 'cities', 'zips', 'neighborhoods' ] 
         self.collection_dict = dict(zip( self.data_types, self.collections ) )
@@ -66,13 +66,13 @@ class ZillowParser( object ):
 
                 # dont begin parsing until we reach our start file
                 # allows script to continue in middle of parse when interrupted
+                file = file.replace('\n', '')
                 if( file == self.start_file ):
                     begin_parsing = True
                 if ( not begin_parsing ):
                     continue 
 
                 time_series = 'undetermined'
-                file = file.replace('\n', '')
                 if ( self.debug ):
                     print 'inspecting %s'%file
 
@@ -97,7 +97,7 @@ class ZillowParser( object ):
                             if ( not time_series_begun ):
                                 time_series_begun = True
                                 time_series = data_set
-                                initial_document = { '%s'%time_series : [] }
+                                initial_document = { time_series : [] }
                                 dates_document['%s_dates'%time_series] =  []
                             dates_document['%s_dates'%time_series].append( field )
                             
@@ -106,7 +106,7 @@ class ZillowParser( object ):
                     # iterate over csv, populate time series as well as any other data
                     # each row in the csv is a document.
                     for line in fh_dr:
-                        document = initial_document
+                        document = copy.deepcopy( initial_document )
                         # Note: the fieldnames list keeps the keys in order.  line.keys() or line.iteritems() does not
                         for field in fh_dr.fieldnames:
                             if ( time_series != 'undetermined' and re.search('\d{4}-\d{2}', field) ):
@@ -151,14 +151,13 @@ class ZillowParser( object ):
     def save_documents( self, documents, time_series ):
         requests = []
         for document in documents:
-            print document['RegionName']
             if( time_series in document.keys() ):
                 # In most cases, if the document is already there, then we are only updating the time series
                 if ( self.debug ):
                     print 'updating'
                 requests.append( pymongo.UpdateOne( {  'RegionName' : document['RegionName'] }, { '$set' : { time_series : document[time_series] } }, upsert=True ) )
             else:
-                requests.append( pymongo.ReplaceOne( {  'RegionName' : document['RegionName'] }, document, upsert=True ) )
+                requests.append( pymongo.UpdateOne( {  'RegionName' : document['RegionName'] }, { '$set': document }, upsert=True ) )
         if ( requests != [] ):
             if ( self.debug ):
                 print 'BULK WRITE!'
