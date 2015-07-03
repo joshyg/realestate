@@ -25,7 +25,7 @@ class ZillowParser( object ):
         self.zips = self.db['zips'] # will be created if it doesn't already exist
         self.neighborhoods = self.db['neighborhoods'] # will be created if it doesn't already exist
         self.debug = False
-        self.write_size = 5
+        self.write_size = 50
         self.data_types = [ 'State', 'Metro', 'County', 'City', 'Zip', 'Neighborhood' ] 
         self.collections = [ 'states', 'metros', 'counties', 'cities', 'zips', 'neighborhoods' ] 
         self.collection_dict = dict(zip( self.data_types, self.collections ) )
@@ -46,7 +46,7 @@ class ZillowParser( object ):
             return str(file_re.group(1))
         file_re = re.search('(\S+)_%s(_Public)*.csv'%data, file)
         if ( file_re ):
-            data_set = str(file_re.group(1))
+            data_set = str(file_re.group(1)).replace('-', '_')
             if ( file_re.group(2) ):
                 data_set += '_Public'
             return data_set
@@ -101,7 +101,8 @@ class ZillowParser( object ):
                                 dates_document['%s_dates'%time_series] =  []
                             dates_document['%s_dates'%time_series].append( field )
                             
-                            
+                    if ( self.dates_only ):
+                        continue                
 
                     # iterate over csv, populate time series as well as any other data
                     # each row in the csv is a document.
@@ -111,7 +112,8 @@ class ZillowParser( object ):
                         for field in fh_dr.fieldnames:
                             if ( time_series != 'undetermined' and re.search('\d{4}-\d{2}', field) ):
                                 document[time_series].append( self.format( line[field] ) )
-                            else:
+                            # For now only non list data I save is RegionName, may change later
+                            elif ( field in [ 'RegionName' ] ):
                                 document[field] = line[field].lower()
 
                         # without deepcopy we will keep overwriting the document reference
@@ -138,7 +140,7 @@ class ZillowParser( object ):
             # end of data type
             if ( self.debug ):
                 print 'inserting dates document'
-            self.collection.update_one( { 'dates_document' : 1 }, { '$set' :  dates_document } )
+            self.collection.update_one( { 'dates_document' : 1 }, { '$set' :  dates_document }, upsert=True )
 
 
     def format( self, entry ):
@@ -174,6 +176,7 @@ if ( __name__ == '__main__' ):
     parser.add_argument('--download_zips',       action='store_true',               help='download zip files from zillow to directory specified in --directory or pwd if no directory specified')
     parser.add_argument('--unzip_files',         action='store_true',               help='unzip zip files downloaded from zillow in directory specified in --directory or pwd if no directory specified')
     parser.add_argument('--parse_files',         action='store_true',               help='parse csv files in unzipped directories under --directory ( or pwd ), populate/update db')
+    parser.add_argument('--dates_only',          action='store_true',               help='parse csv files in unzipped directories under --directory ( or pwd ), only update dates_document')
     parser.add_argument('--directory',           type=str, default='.',             help='directory to store/retrieve zip/csv files')
     parser.add_argument('--start_at',            type=str, default='',              help='begin populating db when you reach this file')
 
@@ -182,6 +185,7 @@ if ( __name__ == '__main__' ):
     zp.debug = args.debug
     zp.directory = args.directory
     zp.start_file = args.start_at
+    zp.dates_only = args.dates_only
 
     if ( zp.debug ):
         print 'Parser instantiated'
