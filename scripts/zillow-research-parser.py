@@ -113,7 +113,7 @@ class ZillowParser( object ):
                             if ( time_series != 'undetermined' and re.search('\d{4}-\d{2}', field) ):
                                 document[time_series].append( self.format( line[field] ) )
                             # For now only non list data I save is RegionName, may change later
-                            elif ( field in [ 'RegionName' ] ):
+                            elif ( field in [ 'RegionName', 'State', 'City', 'County', 'Metro' ] ):
                                 document[field] = line[field].lower()
 
                         # without deepcopy we will keep overwriting the document reference
@@ -140,7 +140,7 @@ class ZillowParser( object ):
             # end of data type
             if ( self.debug ):
                 print 'inserting dates document'
-            self.collection.update_one( { 'dates_document' : 1 }, { '$set' :  dates_document }, upsert=True )
+            self.collection.update_one( { 'RegionName' : 'dates_document' }, { '$set' :  dates_document }, upsert=True )
 
 
     def format( self, entry ):
