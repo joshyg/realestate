@@ -1,3 +1,5 @@
 .frontpage_form { margin-top: 25%; text-align: center; }
-.results_form { margin-top: 0%;    text-align: left; }
+.results_form { margin-top: 0%; margin-left: 15%; text-align: left; width: 900px;background-color: white}
+.chart {  margin-left: 15%; width: 900px; height: 500px; text-align: center}
 body { background-size:100% }
+
