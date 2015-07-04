@@ -43,7 +43,7 @@ class ZillowParser( object ):
     def get_data_set( self, file, data ):
         file_re = re.search('%s_(\S+).csv'%data, file)
         if ( file_re ):
-            return str(file_re.group(1))
+            return str(file_re.group(1)).replace('-', '_')
         file_re = re.search('(\S+)_%s(_Public)*.csv'%data, file)
         if ( file_re ):
             data_set = str(file_re.group(1)).replace('-', '_')
