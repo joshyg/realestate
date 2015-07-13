@@ -16,6 +16,8 @@
         {% csrf_token %}
         <input type="text" class="input-block-level" name="search_term">
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
+        <a href='#' onclick="show_advanced_search()">Advanced Search</a>
+        <div id='advanced_search'></div>
         </form>
     </div><!--main_form-->
     <div id="main_chart" class="chart" align="center"></div>

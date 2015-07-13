@@ -38,6 +38,9 @@ class QueryTracker(object):
         self.response = {}
         self.query_dict = {}
         self.start_year = 1993
+        self.time_series_list = ['MedianSoldPrice_AllHomes', 'PriceToRentRatio_AllHomes', 'MedianSoldPricePerSqft_SingleFamilyResidence' ]
+        self.collections = [ States, Cities, Counties, Neighborhoods, Zips ]
+        self.types = [ 'state', 'city', 'county', 'neighborhood', 'zip' ]
 
     def initSalesList( self ):
         print 'in initSalesList'
@@ -81,10 +84,67 @@ class QueryTracker(object):
     def parseRequest( self ):
         print 'in parseRequest'
         self.search_term = self.request.GET.get( 'search_term', '' ) 
-        self.query_metric = self.request.GET.get( 'query_metric', 'MedianSoldPrice_AllHomes' )
+        self.time_series = self.time_series_list[ int( self.request.GET.get( 'data_type', 0 ) ) ]
         print self.search_term
+
+        #specified in query?
+        if ( self.request.GET.get( 'region_type', 'NA' ) != 'NA' ):
+            self.collection = self.collections[int( self.request.GET.get( 'region_type', 'NA' ) )]
+            self.query_dict['RegionName'] = self.search_term
+            self.response['header'] = self.search_term
+            self.response['type'] = self.types[int( self.request.GET.get( 'region_type', 'NA' ) )]
+            print 'All query paramters gathered from advanced search'
+            return
+
         #zip code?
-        search_re = re.search( '^ *(\d+) *$', self.search_term )
+        if ( self.checkForZipQuery( self.search_term ) ):
+            return
+            
+        # compound?  could be city, state or neighborhood, city
+        if ( self.checkForCompoundQuery( self.search_term ) ):
+            return
+
+        # no comma? This will have to be improved, but for now, we look for if its a state,
+        # then we see if we have a city in the db with this name, then county, then neighborhood
+        # there are obvious caes where there could be both (la, new york counties), leaving as a FIXME
+        search_re = re.search( '^ *(.*) *$', self.search_term )
+        if ( search_re ):
+            search_str = str(search_re.group(1)).lower() 
+            if ( self.checkForStateQuery(search_str) ):
+                return
+            if ( self.checkForCityQuery(search_str) ):
+                return
+            if ( self.checkForCountyQuery(search_str) ):
+                return
+            if ( self.checkForNeighborhoodQuery(search_str) ):
+                return
+
+    def checkForCompoundQuery( self, search_term ):
+        print 'in checkForCompoundQuery'
+        search_re = re.search( '^ *(.*),\s+(.*) *$', search_term )
+        if ( search_re ):
+            print 'Compound'
+            search_str = str(search_re.group(1)).lower()
+            state_str = str(search_re.group(2)).lower()
+            if ( self.isState( state_str ) ):
+                print 'City, State?'
+                if ( state_str not in state_abbrevs ):
+                    state_str = state_abbrevs[states.index(state_str)]
+                if ( self.checkForCityQuery(search_str, state_str) ):
+                    return True
+                else:
+                    print 'nope'
+            if ( Cities.objects.filter( RegionName = str(search_re.group(2)).lower() ).count() > 0 ):
+                print 'Neighborhood, City?'
+                if ( self.checkForNeighborhoodQuery(search_str) ):
+                    self.query_dict['City'] = str(search_re.group(2))
+                    print 'query for neighborhood %s'%self.query_dict['RegionName']
+            return True
+        return False
+                
+    def checkForZipQuery( self, search_term ):
+        print 'in checkForZipQuery'
+        search_re = re.search( '^ *(\d+) *$', search_term )
         if ( search_re ):
             print 'searching for zip'
             self.collection = Zips
@@ -92,69 +152,80 @@ class QueryTracker(object):
             self.response['header'] = self.query_dict['RegionName']
             self.response['type'] = 'zip'
             print 'zip = %s'%self.query_dict['RegionName']
-            return
-            
-        # compound?  could be city, state or neighborhood, city
-        search_re = re.search( '^ *(.*),\s+(.*) *$', self.search_term )
-        if ( search_re ):
-            if ( self.isState( str(search_re.group(1).lower() ) ) ):
+            return True
+        return False
+
+    def checkForStateQuery( self, search_str ):
+        print 'in checkForStateQuery'
+        search_str = re.sub('(?i) *state', '', search_str)
+        if ( self.isState( search_str ) ):
+            state_str = search_str
+            if ( state_str not in state_abbrevs ):
+                state_str = state_abbrevs[states.index(state_str)]
+            self.collection = States
+            self.query_dict['RegionName'] = search_str
+            self.response['header'] = self.query_dict['RegionName']
+            self.response['type'] = 'state'
+            print 'query for state %s'%self.query_dict['RegionName']
+            return True
+        return False
+
+    def checkForCityQuery( self, search_str, state_str = '' ):
+        # Unlike with states and counties, city name convention is not 100% consistent
+        # jersey citu is saved as jersey city, but new york city is saved as new york
+        print 'in checkForCityQuery'
+        for tmp_str in [ search_str, re.sub('(?i) *city', '', search_str) ]:
+            city_query_dict = { 'RegionName' : tmp_str }
+            if ( state_str != '' ):
+                city_query_dict['State'] = state_str
+                self.query_dict['State'] = state_str
+            if( Cities.objects.filter( **city_query_dict ).count() > 0 ):
                 self.collection = Cities
-                self.query_dict['RegionName'] = int(search_re.group(1))
-                self.query_dict['State'] = int(search_re.group(2))
-                self.response['header'] = self.query_dict['RegionName']
-                print 'query for city %s'%self.query_dict['RegionName']
-                self.response['type'] = 'city'
-            else:
-                self.collection = Neighborhoods
-                self.query_dict['RegionName'] = int(search_re.group(1))
-                self.query_dict['City'] = int(search_re.group(2))
-                self.response['header'] = self.query_dict['RegionName']
-                self.response['type'] = 'neighborhood'
-                print 'query for neighborhood %s'%self.query_dict['RegionName']
-            return
-                
-        # no comma? This will have to be improved, but for now, we look for if its a state,
-        # then we see if we have a city in the db with this name, then county, then neighborhood
-        # there are obvious caes where there could be both (la, new york counties), leaving as a FIXME
-        search_re = re.search( '^ *(.*) *$', self.search_term )
-        if ( search_re ):
-            search_str = str(search_re.group(1).lower()) 
-            if ( self.isState( search_str ) ):
-                self.collection = States
-                self.query_dict['RegionName'] = search_str
-                self.response['header'] = self.query_dict['RegionName']
-                self.response['type'] = 'state'
-                print 'query for state %s'%self.query_dict['RegionName']
-            elif( Cities.objects.filter( RegionName = search_str ).count() > 0 ):
-                self.collection = Cities
-                self.query_dict['RegionName'] = str(search_re.group(1))
+                self.query_dict['RegionName'] = tmp_str
                 self.response['header'] = self.query_dict['RegionName']
                 self.response['type'] = 'city'
                 print 'query for city %s'%self.query_dict['RegionName']
-            elif( Counties.objects.filter( RegionName = search_str ).count() > 0 ):
-                self.collection = Counties
-                self.query_dict['RegionName'] = str(search_re.group(1))
-                self.response['header'] = self.query_dict['RegionName']
-                self.response['type'] = 'county'
-                print 'query for county %s'%self.query_dict['RegionName']
-            elif( Neighborhoods.objects.filter( RegionName = search_str ).count() > 0 ):
-                print 'query for neighborhood %s'%self.query_dict['RegionName']
-                self.collection = Neighborhoods
-                self.query_dict['RegionName'] = str(search_re.group(1))
-                self.response['type'] = 'neighborhood'
-                self.response['header'] = self.query_dict['RegionName']
+                return True
+        return False
+
+    def checkForCountyQuery( self, search_str ):
+        print 'in checkForCountyQuery'
+        search_str = re.sub('(?i) *county', '', search_str)
+        if( Counties.objects.filter( RegionName = search_str ).count() > 0 ):
+            self.collection = Counties
+            self.query_dict['RegionName'] = search_str
+            self.response['header'] = self.query_dict['RegionName']
+            self.response['type'] = 'county'
+            print 'query for county %s'%self.query_dict['RegionName']
+
+    def checkForNeighborhoodQuery( self, search_str ):
+        if( Neighborhoods.objects.filter( RegionName = search_str ).count() > 0 ):
+            self.collection = Neighborhoods
+            self.query_dict['RegionName'] = str(search_re.group(1))
+            print 'query for neighborhood %s'%self.query_dict['RegionName']
+            self.response['type'] = 'neighborhood'
+            self.response['header'] = self.query_dict['RegionName']
+            return True
+        return False
 
     def filterProperties( self ):
         print 'in filterProperties'
         self.parseRequest()
     
+        self.response['warning'] = ''
         if ( self.query_dict != {} ):
-            print self.query_metric
-            self.sales_data =  self.collection.objects.filter( **self.query_dict ).only( self.query_metric )[0].to_mongo()[self.query_metric]
-            print '%d sales'%(len( self.sales_data ))
-            # The dates_dosument for each collection is stored as a document with RegionName 'dates_document'
-            self.sales_dates = self.collection.objects.filter( RegionName = 'dates_document' ).only( '%s_dates'%self.query_metric )[0].to_mongo()['%s_dates'%self.query_metric]
-            print '%d dates'%(len(self.sales_dates))
+            print self.time_series
+            self.sales_data =  self.collection.objects.filter( **self.query_dict ).only( self.time_series )
+            if ( self.sales_data.count() > 0 ):
+                self.sales_data = self.sales_data[0].to_mongo()[self.time_series]
+                print '%d sales'%(len( self.sales_data ))
+                # The dates_dosument for each collection is stored as a document with RegionName 'dates_document'
+                self.sales_dates = self.collection.objects.filter( RegionName = 'dates_document' ).only( '%s_dates'%self.time_series )
+                print 'filter complete'
+                self.sales_dates = self.sales_dates[0].to_mongo()['%s_dates'%self.time_series]
+                print '%d dates'%(len(self.sales_dates))
+            else:
+                self.response['warning'] = 'No results for %s'%self.response['header']
         else:
             print 'no filter!'
             self.sales_data = []
