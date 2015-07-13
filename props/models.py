@@ -104,6 +104,9 @@ print 'in props/models declaring cities class'
 class Cities( Document ):
     RegionName = StringField()
     State = StringField()
+    City = StringField()
+    County = StringField()
+    Metro = StringField()
 
     MedianPctOfPriceReduction_AllHomes = ListField()
     Zhvi_SingleFamilyResidence = ListField()
@@ -262,6 +265,7 @@ class Neighborhoods( Document ):
     RegionName = StringField()
     State = StringField()
     City = StringField()
+    County = StringField()
     Metro = StringField()
 
     Zhvi_BottomTier = ListField()
