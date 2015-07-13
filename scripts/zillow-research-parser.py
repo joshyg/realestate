@@ -27,6 +27,7 @@ class ZillowParser( object ):
         self.debug = False
         self.write_size = 50
         self.data_types = [ 'State', 'Metro', 'County', 'City', 'Zip', 'Neighborhood' ] 
+        self.db_update_list = [ 'State', 'Metro', 'County', 'City', 'Zip', 'Neighborhood' ] 
         self.collections = [ 'states', 'metros', 'counties', 'cities', 'zips', 'neighborhoods' ] 
         self.collection_dict = dict(zip( self.data_types, self.collections ) )
         self.directory = ''
@@ -55,6 +56,8 @@ class ZillowParser( object ):
 
     def parse_files( self ):
         for data in self.data_types:
+            if data not in self.db_update_list:
+                continue
             documents = []
             dates_document = { 'dates_document' : 1 } # store all date arrays for a data type in a single document.  There should be one for each time series csv
             path = '%s/%s'%(self.directory,data)
@@ -112,7 +115,6 @@ class ZillowParser( object ):
                         for field in fh_dr.fieldnames:
                             if ( time_series != 'undetermined' and re.search('\d{4}-\d{2}', field) ):
                                 document[time_series].append( self.format( line[field] ) )
-                            # For now only non list data I save is RegionName, may change later
                             elif ( field in [ 'RegionName', 'State', 'City', 'County', 'Metro' ] ):
                                 document[field] = line[field].lower()
 
@@ -153,16 +155,20 @@ class ZillowParser( object ):
     def save_documents( self, documents, time_series ):
         requests = []
         for document in documents:
+            filter_dict = {}
+            for field in document.keys():
+                if ( field in [ 'RegionName', 'State' ] ):
+                    filter_dict[field] = document[field]
             if( time_series in document.keys() ):
                 # In most cases, if the document is already there, then we are only updating the time series
                 if ( self.debug ):
-                    print 'updating'
-                requests.append( pymongo.UpdateOne( {  'RegionName' : document['RegionName'] }, { '$set' : { time_series : document[time_series] } }, upsert=True ) )
+                    print 'updating %s'%filter_dict['RegionName']
+                requests.append( pymongo.UpdateOne( copy.deepcopy( filter_dict ), { '$set' : { time_series : document[time_series] } }, upsert=True ) )
             else:
-                requests.append( pymongo.UpdateOne( {  'RegionName' : document['RegionName'] }, { '$set': document }, upsert=True ) )
+                requests.append( pymongo.UpdateOne( copy.deepcopy( filter_dict ), { '$set': document }, upsert=True ) )
         if ( requests != [] ):
-            if ( self.debug ):
-                print 'BULK WRITE!'
+            #if ( self.debug ):
+            #    print 'BULK WRITE!'
             self.collection.bulk_write( requests )
     
 
@@ -179,6 +185,8 @@ if ( __name__ == '__main__' ):
     parser.add_argument('--dates_only',          action='store_true',               help='parse csv files in unzipped directories under --directory ( or pwd ), only update dates_document')
     parser.add_argument('--directory',           type=str, default='.',             help='directory to store/retrieve zip/csv files')
     parser.add_argument('--start_at',            type=str, default='',              help='begin populating db when you reach this file')
+    parser.add_argument('dbs',                   nargs='*',                         help='update only these dbs.  By default the script will update each one.')
+    
 
     args = parser.parse_args()
     zp = ZillowParser(username=args.username, password=args.password, host=args.host, port=int(args.port))
@@ -186,6 +194,8 @@ if ( __name__ == '__main__' ):
     zp.directory = args.directory
     zp.start_file = args.start_at
     zp.dates_only = args.dates_only
+    if ( len( args.dbs ) > 0 ):
+        zp.db_update_list = args.dbs
 
     if ( zp.debug ):
         print 'Parser instantiated'
