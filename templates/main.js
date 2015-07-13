@@ -2,33 +2,32 @@ var serverdata;
 sales_array = new Array();;
 roi_array = new Array();;
 var num_datasets = 0;
+advanced_search= 0;
 google.load("visualization", "1", {packages:["corechart"]});
 google.setOnLoadCallback(draw_chart);
 
 function init_page() {
     sales_array[0] = ['Date']
     roi_array[0] = ['Date']
-    for ( var year = 1990; year <= 2015; year++ ) {
-        for ( var month = 1; month <= 12; month++ ) {
-            sales_array.push( [ month+'/'+year ] );
-            roi_array.push( [ month+'/'+year ] );
-        }
-    }
 }
 
 function draw_chart() {
     console.log('in draw chart');
     console.log('initial sales_array')
-    console.log(sales_array);
     if ( serverdata ) {
         var sales_array_index=0; 
-        sales_array[0].push( new String ( serverdata.header ) );
-        roi_array[0].push( new String ( serverdata.header ) );
+        sales_array[0].push( String ( serverdata.header ) );
+        roi_array[0].push( String ( serverdata.header ) );
         for (i in serverdata.sales) {
             sales_array_index += 1; 
-            console.log( sales_array[sales_array_index] );
-            sales_array[sales_array_index].push( serverdata.sales[i].avg_price );
-            roi_array[sales_array_index].push( serverdata.sales[i].roi );
+            if ( sales_array.length <= sales_array_index ) {
+                sales_array.push( [ serverdata.sales[i].period, serverdata.sales[i].avg_price ] );
+                roi_array.push(   [ serverdata.sales[i].period, serverdata.sales[i].roi ] );
+            }  
+            else {
+                sales_array[sales_array_index].push( serverdata.sales[i].avg_price );
+                roi_array[sales_array_index].push(   serverdata.sales[i].roi );
+            }  
         }  
         sales_array = sales_array.slice(0, sales_array_index+1);
         roi_array   = roi_array.slice(0, sales_array_index+1);
@@ -39,10 +38,10 @@ function draw_chart() {
         
         var options = {
           title: 'Sales vs. Time',
-          hAxis: {title: 'Sales'},
+          hAxis: {title: 'Dates'},
           vAxis: {title: 'Price'},
           curveType: 'function',
-          legend: { position: 'bottom' }
+          legend: { position: 'right' }
         };
       
         if ( serverdata.sales.length >= 1 ){
@@ -54,7 +53,7 @@ function draw_chart() {
 
         options = {
           title: 'ROI vs. Time',
-          hAxis: {title: 'Sales'},
+          hAxis: {title: 'Dates'},
           vAxis: {title: 'ROI'},
           curveType: 'function',
           legend: { position: 'bottom' }
@@ -81,8 +80,30 @@ function ajax_submit(){
 
     console.log('sending...');
     str = 'search_term='+document.forms['main_search']['search_term'].value;
+    if ( advanced_search == 1 ) {
+        str += '&region_type='+document.forms['main_search']['region_type'].value;
+        str += '&data_type='+document.forms['main_search']['data_type'].value;
+    }
     req.open('GET', '/search/?'+str, true);
     req.send();
 }
 
-
+function show_advanced_search() {
+    advanced_search = 1;
+    search_form = 'Region Type';
+    search_form += '<select name="region_type">';
+    search_form += '<option value=0>State</option>';
+    search_form += '<option value=1>City</option>';
+    search_form += '<option value=2>County</option>';
+    search_form += '<option value=3>Neighborhood</option>';
+    search_form += '<option value=4>Zip</option>';
+    search_form += '</select>';
+    search_form += '<br>';
+    search_form += 'Data';
+    search_form += '<select name="data_type">';
+    search_form += '<option value=0>Median Sale Price All Homes</option>';
+    search_form += '<option value=1>Median Price To Rent Ratio All Homes</option>';
+    search_form += '<option value=2>Median Price Per Sqft Single Family Residence</option>';
+    search_form += '</select>';
+    document.getElementById('advanced_search').innerHTML = search_form;
+}
