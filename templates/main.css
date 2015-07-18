@@ -1,5 +1,6 @@
-.frontpage_form { margin-top: 25%; text-align: center; }
+.frontpage_form { margin-top: 25%; text-align: center }
 .results_form { margin-top: 0%; margin-left: 15%; text-align: left; width: 900px;background-color: white}
 .chart {  margin-left: 15%; width: 900px; height: 500px; text-align: center}
+.warning_bar { margin-left: 15%; width: 900px; text-align: center; background-color: white}
 body { background-size:100% }
 

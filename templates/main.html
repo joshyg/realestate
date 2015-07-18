@@ -15,11 +15,18 @@
         <form action="/search/" method="post" name = "main_search" enctype="multipart/form-data" onsubmit="ajax_submit();return false;">
         {% csrf_token %}
         <input type="text" class="input-block-level" name="search_term">
+        <select name="data_type">
+            <option value=0 selected>Median Sale Price All Homes</option>
+            <option value=1>Median Price/Rent ratio All Homes</option>
+            <option value=2>Median Price Per Square Foot All Homes</option>
+        </select>
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
-        <a href='#' onclick="show_advanced_search()">Advanced Search</a>
+        <a href='#' onclick="clear_chart()" style="hidden">Clear</a>
         <div id='advanced_search'></div>
         </form>
+        <br>
     </div><!--main_form-->
+    <div id="warning" class="warning_bar"  align="center"></div>
     <div id="main_chart" class="chart" align="center"></div>
     <div id="roi_chart"  class="chart" align="center"></div>
 </div><!--main_body-->
