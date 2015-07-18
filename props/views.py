@@ -38,7 +38,7 @@ class QueryTracker(object):
         self.response = {}
         self.query_dict = {}
         self.start_year = 1993
-        self.time_series_list = ['MedianSoldPrice_AllHomes', 'PriceToRentRatio_AllHomes', 'MedianSoldPricePerSqft_SingleFamilyResidence' ]
+        self.time_series_list = ['MedianSoldPrice_AllHomes', 'PriceToRentRatio_AllHomes', 'MedianSoldPricePerSqft_AllHomes' ]
         self.collections = [ States, Cities, Counties, Neighborhoods, Zips ]
         self.types = [ 'state', 'city', 'county', 'neighborhood', 'zip' ]
 
@@ -82,7 +82,7 @@ class QueryTracker(object):
         return False
 
     def parseRequest( self ):
-        print 'in parseRequest'
+        print 'in parseRequest time_series = %d'%int( self.request.GET.get( 'data_type', 0 ) )
         self.search_term = self.request.GET.get( 'search_term', '' ) 
         self.time_series = self.time_series_list[ int( self.request.GET.get( 'data_type', 0 ) ) ]
         print self.search_term
@@ -159,6 +159,7 @@ class QueryTracker(object):
         print 'in checkForStateQuery'
         search_str = re.sub('(?i) *state', '', search_str)
         if ( self.isState( search_str ) ):
+            print '%s is a State'%search_str
             state_str = search_str
             if ( state_str not in state_abbrevs ):
                 state_str = state_abbrevs[states.index(state_str)]
@@ -172,7 +173,7 @@ class QueryTracker(object):
 
     def checkForCityQuery( self, search_str, state_str = '' ):
         # Unlike with states and counties, city name convention is not 100% consistent
-        # jersey citu is saved as jersey city, but new york city is saved as new york
+        # jersey city is saved as jersey city, but new york city is saved as new york
         print 'in checkForCityQuery'
         for tmp_str in [ search_str, re.sub('(?i) *city', '', search_str) ]:
             city_query_dict = { 'RegionName' : tmp_str }
@@ -180,6 +181,7 @@ class QueryTracker(object):
                 city_query_dict['State'] = state_str
                 self.query_dict['State'] = state_str
             if( Cities.objects.filter( **city_query_dict ).count() > 0 ):
+                print 'City %s found'%search_str
                 self.collection = Cities
                 self.query_dict['RegionName'] = tmp_str
                 self.response['header'] = self.query_dict['RegionName']
@@ -192,6 +194,7 @@ class QueryTracker(object):
         print 'in checkForCountyQuery'
         search_str = re.sub('(?i) *county', '', search_str)
         if( Counties.objects.filter( RegionName = search_str ).count() > 0 ):
+            print 'County %s found'%search_str
             self.collection = Counties
             self.query_dict['RegionName'] = search_str
             self.response['header'] = self.query_dict['RegionName']
@@ -199,9 +202,11 @@ class QueryTracker(object):
             print 'query for county %s'%self.query_dict['RegionName']
 
     def checkForNeighborhoodQuery( self, search_str ):
+        print 'in checkForNeighborhoodQuery'
         if( Neighborhoods.objects.filter( RegionName = search_str ).count() > 0 ):
+            print 'Neighborhood %s found'%search_str
             self.collection = Neighborhoods
-            self.query_dict['RegionName'] = str(search_re.group(1))
+            self.query_dict['RegionName'] = search_str
             print 'query for neighborhood %s'%self.query_dict['RegionName']
             self.response['type'] = 'neighborhood'
             self.response['header'] = self.query_dict['RegionName']
@@ -215,7 +220,7 @@ class QueryTracker(object):
         self.response['warning'] = ''
         if ( self.query_dict != {} ):
             print self.time_series
-            self.sales_data =  self.collection.objects.filter( **self.query_dict ).only( self.time_series )
+            self.sales_data =  self.collection.objects.filter( **self.query_dict )
             if ( self.sales_data.count() > 0 ):
                 self.sales_data = self.sales_data[0].to_mongo()[self.time_series]
                 print '%d sales'%(len( self.sales_data ))
@@ -224,11 +229,15 @@ class QueryTracker(object):
                 print 'filter complete'
                 self.sales_dates = self.sales_dates[0].to_mongo()['%s_dates'%self.time_series]
                 print '%d dates'%(len(self.sales_dates))
+                return True
             else:
                 self.response['warning'] = 'No results for %s'%self.response['header']
+                return False
         else:
             print 'no filter!'
+            self.response['warning'] = 'No Region in db named %s'%self.search_term
             self.sales_data = []
+            return False
 
     def periodToIndex( self, year, month ):
         return 12*(year - self.start_year) + month - 1
@@ -244,8 +253,9 @@ def search(request):
     qt = QueryTracker(request)
 
     qt.initSalesList()
-    qt.filterProperties()
-    qt.populateSalesList()
+    
+    if ( qt.filterProperties() ):
+        qt.populateSalesList()
 
     print 'done iterating  over filtered sales_data'
     json_str = json.dumps(qt.response)
