@@ -38,7 +38,12 @@ class QueryTracker(object):
         self.response = {}
         self.query_dict = {}
         self.start_year = 1993
-        self.time_series_list = ['MedianSoldPrice_AllHomes', 'PriceToRentRatio_AllHomes', 'MedianSoldPricePerSqft_AllHomes' ]
+        self.time_series_list = [ 'MedianSoldPrice_AllHomes', 'PriceToRentRatio_AllHomes', 'MedianSoldPricePerSqft_AllHomes',  'MedianSoldPricePerSqft_Condominum',
+                                  'MedianSoldPricePerSqft_SingleFamilyResidence', 'MedianRentalPrice_AllHomes', 'MedianRentalPricePerSqft_AllHomes',
+                                  'PctOfHomesIncreasingInValues_AllHomes', 'PctOfHomesDecreasingInValues_AllHomes', 'HomesSoldAsForeclosures_Ratio_AllHomes',
+                                  'NumberOfHomesForRent_AllHomes', 'Turnover_AllHomes', 'SalePriceToListRatio_AllHomes', 
+                                  'MedianListingPrice_AllHomes', 'MedianListingPricePerSqft_AllHomes', 'PctOfListingsWithPriceReductions_AllHomes'
+                                ]
         self.collections = [ States, Cities, Counties, Neighborhoods, Zips ]
         self.types = [ 'state', 'city', 'county', 'neighborhood', 'zip' ]
 
@@ -50,29 +55,35 @@ class QueryTracker(object):
         self.response['sales'] = []
         for i in range(len(self.sales_data)):
             self.response['sales'].append( { 'avg_price' : self.sales_data[i], 'period' : self.sales_dates[i] } )
-        print 'about to calculate avg and roi'
+        print 'about to calculate avg and pct_change'
         data_begun = False
         for period in range( len( self.response['sales'] ) ):
             if ( self.response['sales'][period]['avg_price'] != '' ):
                 data_begun = True
-                # roi calculation begins 1 after the first period with sales.
-                # the first period with sales will always have roi = 1
+                # pct_change calculation begins 1 after the first period with sales.
+                # the first period with sales will always have pct_change = 1
+                # Initially I calculate pct_change as 'Multiple of initial period'
+                # then I subtract 1 from each entry to get a % change
                 if ( period == 0 ): 
-                    self.response['sales'][period]['roi'] = 1
+                    self.response['sales'][period]['pct_change'] = 1
                 elif ( self.response['sales'][period-1]['avg_price'] == 0 ):
-                    self.response['sales'][period]['roi'] = 1
+                    self.response['sales'][period]['pct_change'] = 1
                 else:
-                    self.response['sales'][period]['roi'] = 1.0*self.response['sales'][period-1]['roi'] * self.response['sales'][period]['avg_price'] / self.response['sales'][period-1]['avg_price']
-                print 'period = %d roi = %s'%(period, str( self.response['sales'][period]['roi'] ))
+                    self.response['sales'][period]['pct_change'] = 1.0*self.response['sales'][period-1]['pct_change'] * self.response['sales'][period]['avg_price'] / self.response['sales'][period-1]['avg_price']
+                print 'period = %d pct_change = %s'%(period, str( self.response['sales'][period]['pct_change'] ))
             elif ( data_begun ):
                 # if data has begun but we have a period that has no data, we have several options
                 # we can do a linear interpolation, or we can simply assign it the last value, 
                 # which will give some sharp edges but is simpler. will go withsimple approach for now
                 self.response['sales'][period]['avg_price'] = self.response['sales'][period-1]['avg_price']
-                self.response['sales'][period]['roi'] = self.response['sales'][period-1]['roi']
+                self.response['sales'][period]['pct_change'] = self.response['sales'][period-1]['pct_change']
             else:
                 self.response['sales'][period]['avg_price'] = 0
-                self.response['sales'][period]['roi'] = 1
+                self.response['sales'][period]['pct_change'] = 1
+        # convert multiple of initial value to pct change
+        print ' converting multiple of initial value to % change'
+        for period in range( len( self.response['sales'] ) ):
+            self.response['sales'][period]['pct_change'] = 100*( self.response['sales'][period]['pct_change'] - 1 ) 
         print 'Exiting populateSalesList, data_begun = %d'%data_begun
                 
 
@@ -179,13 +190,17 @@ class QueryTracker(object):
             city_query_dict = { 'RegionName' : tmp_str }
             if ( state_str != '' ):
                 city_query_dict['State'] = state_str
-                self.query_dict['State'] = state_str
             if( Cities.objects.filter( **city_query_dict ).count() > 0 ):
                 print 'City %s found'%search_str
                 self.collection = Cities
                 self.query_dict['RegionName'] = tmp_str
                 self.response['header'] = self.query_dict['RegionName']
                 self.response['type'] = 'city'
+
+                # If a state was passed in, add it to the query dict
+                if ( state_str != '' ):
+                    self.query_dict['State'] = state_str
+
                 print 'query for city %s'%self.query_dict['RegionName']
                 return True
         return False
@@ -221,8 +236,11 @@ class QueryTracker(object):
         if ( self.query_dict != {} ):
             print self.time_series
             self.sales_data =  self.collection.objects.filter( **self.query_dict )
+            # if there is data, extract our time series
             if ( self.sales_data.count() > 0 ):
                 self.sales_data = self.sales_data[0].to_mongo()[self.time_series]
+            # its possible that the region has a data but not for the time series we are requesting.
+            if ( len( self.sales_data ) > 0 ):
                 print '%d sales'%(len( self.sales_data ))
                 # The dates_dosument for each collection is stored as a document with RegionName 'dates_document'
                 self.sales_dates = self.collection.objects.filter( RegionName = 'dates_document' ).only( '%s_dates'%self.time_series )
@@ -231,6 +249,7 @@ class QueryTracker(object):
                 print '%d dates'%(len(self.sales_dates))
                 return True
             else:
+                print 'No results for %s'%self.response['header']
                 self.response['warning'] = 'No results for %s'%self.response['header']
                 return False
         else:
