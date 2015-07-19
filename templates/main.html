@@ -2,11 +2,25 @@
 <!DOCTYPE html>
 <![endif]-->
 <head>
+
+<!--jquery-->
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.js"></script>
+
+<!-- bootstrap -->
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" media="screen">
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<!-- bootstrap select-->
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.5/css/bootstrap-select.min.css" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.5/js/bootstrap-select.min.js"></script>
+
+<!-- google charts-->
 <script type="text/javascript" src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['corechart']}]}""></script>
+
+<!-- ME!! -->
 <script type="text/javascript" src="/static/main.js"></script>
 <link rel="stylesheet" id="csslink" type="text/css" href="/static/main.css" />
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
+
 </head>
 
 <body onload="init_page()" background="/static/Painted_ladies.png">
@@ -15,19 +29,21 @@
         <form action="/search/" method="post" name = "main_search" enctype="multipart/form-data" onsubmit="ajax_submit();return false;">
         {% csrf_token %}
         <input type="text" class="input-block-level" name="search_term">
-        <select name="data_type">
-            <option value=0 selected>Median Sale Price All Homes</option>
-            <option value=1>Median Price/Rent ratio All Homes</option>
-            <option value=2>Median Price Per Square Foot All Homes</option>
-        </select>
+
+        <!--initialize selectbox, use bootstrap-select styling-->
+        <span id="data_type_select"></span>
+        <script>init_data_type_select();$('select').selectpicker();</script>
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
-        <a href='#' onclick="clear_chart()" style="hidden">Clear</a>
+
+        <span id="clear_button"></span>
         <div id='advanced_search'></div>
         </form>
         <br>
     </div><!--main_form-->
+
+
     <div id="warning" class="warning_bar"  align="center"></div>
     <div id="main_chart" class="chart" align="center"></div>
-    <div id="roi_chart"  class="chart" align="center"></div>
+    <div id="pct_change_chart"  class="chart" align="center"></div>
 </div><!--main_body-->
 </body>
