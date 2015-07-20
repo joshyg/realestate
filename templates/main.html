@@ -28,7 +28,7 @@
     <div id = "main_form" align="center" class="frontpage_form">
         <form action="/search/" method="post" name = "main_search" enctype="multipart/form-data" onsubmit="ajax_submit();return false;">
         {% csrf_token %}
-        <input type="text" class="input-block-level" name="search_term">
+        <input type="text" class="input-block-level" class="search_term" name="search_term" id="search_term", style="width:340px" onselect="clear_textbox()" onclick="clear_textbox()">
 
         <!--initialize selectbox, use bootstrap-select styling-->
         <span id="data_type_select"></span>
@@ -36,13 +36,77 @@
         <input type="submit" class="btn btn-primary btn-large" value="Submit"/>
 
         <span id="clear_button"></span>
+
+        
+        <!-- Placeholder for future advanced search feature, may also be a modal-->
         <div id='advanced_search'></div>
+
         </form>
         <br>
     </div><!--main_form-->
 
 
     <div id="warning" class="warning_bar"  align="center"></div>
+    <div id="help_modal_div" align="center">
+        <!-- Button trigger and help Modal -->
+        <button type="button" class="btn btn-primary btn-large" data-toggle="modal" data-target="#helpModal">
+          Where Am I?
+        </button>
+        
+        <!-- Help Modal -->
+        <div class="modal fade" id="helpModal" tabindex="-1" role="dialog" aria-labelledby="helpModalLabel">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="helpModalLabel">Zillow Research Viewer</h4>
+              </div>
+              <div class="modal-body" align="left">
+                I found some data <a href="http://www.zillow.com/research/data/#bulk">here</a>.
+                I thought it was pretty cool, but it was difficult to analyze in csv form, so I made this
+                application.  Enter a zipcode, neighborhood, city, county or state in the search bar, then
+                pick a data type from the select box, then hit Submit. Two charts will appear, one showing
+                the absolute value over time and the other showing the % change.  If you keep the data type
+                constant, then entering a new area will overlay the two result sets.<br>
+                <br>
+                <b>Example</b><br>
+                <br>
+                1) I enter the following:<br>
+                <br>
+                <img src="/static/property_search_1.png" width=500px height=30px />
+                <br>
+                2) The app returns the chart below:
+                <br>
+                <img src="/static/property_search_2.png" width=500px height=300px />
+                <br>
+                3) I now search for the neighborhood noe valley.  Since I am still searching for median home prices, the new data is overlayed on the same chart:
+                <br>
+                <img src="/static/property_search_3.png" width=500px height=300px />
+                <br>
+                4) I now search for Price to Rent Ratios in New york City,  Note that I enter New York, New York.  That is because this name is ambiguous.  New York is a city, state and county.
+                  Since the data type is new, the old data is cleared and my new data is presented in a fresh chart
+                <br>
+                <img src="/static/property_search_4.png" width=500px height=300px />
+                <br>
+                Thats pretty much it.  You can also enter zip codes, counties and states.  Here are some additional tips:
+
+                <br>
+                <ul>
+                    <li>When specifying a county, city or state it is often best to end with the region type.  For instance, a search for 'los angeles' will return the city of los angeles, while 'los angeles county' will return the county.</li>
+                    <li>You can enter searches in the form 'neighborhood, city' or 'city, state'.  This can help disambiguate regions with the same name.  For instance, in order to get the financial district in new york city, type 'financial district, new york'.</li>
+                    <li>I have found that the neighborhood data is somewhat spotty, which makes sense since neigborhood names can be quite fluid.  For this reason I recommend searching a neighborhoods zipcode before coming to any grand conclusions about what you see.</li>
+                </ul>
+                
+                
+                
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Got It</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div> <!--help_modal_div-->
     <div id="main_chart" class="chart" align="center"></div>
     <div id="pct_change_chart"  class="chart" align="center"></div>
 </div><!--main_body-->

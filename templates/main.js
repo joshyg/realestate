@@ -6,6 +6,8 @@ var data_type = 0;
 var advanced_search= 0;
 google.load("visualization", "1", {packages:["corechart"]});
 google.setOnLoadCallback(draw_chart);
+var instruction_str = "Enter Zipcode, Neighborhood, City, County or State";
+
 
 data_type_array = [ 
     'Median Sale Price All Homes',
@@ -27,6 +29,7 @@ data_type_array = [
 ]
 
 function init_page() {
+    document.getElementById('search_term').value=instruction_str;
     sales_array[0] = ['Date']
     pct_change_array[0] = ['Date']
 }
@@ -151,6 +154,7 @@ function show_advanced_search() {
 }
 
 function modify_search_bar() {
+    $('#help_modal_div')[0].style.display="none";
     document.getElementById('clear_button').innerHTML = '<button type="button" class="btn btn-primary btn-large" onclick="clear_chart()" >Clear</button>';
 }
 
@@ -170,4 +174,11 @@ function clear_chart() {
     console.log( 'clearing charts' );
     document.getElementById('main_chart').style.display = "none";
     document.getElementById('pct_change_chart').style.display = "none";
+}
+
+function clear_textbox() {
+    if ( $('#search_term')[0].value == instruction_str ) {
+        console.log('in clear_textbox');
+        document.getElementById('search_term').value = '';
+    }
 }
