@@ -138,18 +138,23 @@ class QueryTracker(object):
             search_str = str(search_re.group(1)).lower()
             state_str = str(search_re.group(2)).lower()
             if ( self.isState( state_str ) ):
-                print 'City, State?'
+                print 'City/County, State?'
                 if ( state_str not in state_abbrevs ):
                     state_str = state_abbrevs[states.index(state_str)]
                 if ( self.checkForCityQuery(search_str, state_str) ):
                     return True
+                if ( self.checkForCountyQuery(search_str, state_str) ):
+                    return True
                 else:
                     print 'nope'
-            if ( Cities.objects.filter( RegionName = str(search_re.group(2)).lower() ).count() > 0 ):
-                print 'Neighborhood, City?'
-                if ( self.checkForNeighborhoodQuery(search_str) ):
-                    self.query_dict['City'] = str(search_re.group(2))
-                    print 'query for neighborhood %s'%self.query_dict['RegionName']
+            city_str = str(search_re.group(2)).lower()
+            for tmp_str in [ city_str, re.sub('(?i) *city', '', city_str) ]:
+                if ( Cities.objects.filter( RegionName = tmp_str ).count() > 0 ):
+                    print 'Neighborhood, City?'
+                    if ( self.checkForNeighborhoodQuery(search_str) ):
+                        self.query_dict['City'] = tmp_str
+                        print 'query for neighborhood %s'%self.query_dict['RegionName']
+                        return True
             return True
         return False
                 
@@ -205,10 +210,13 @@ class QueryTracker(object):
                 return True
         return False
 
-    def checkForCountyQuery( self, search_str ):
+    def checkForCountyQuery( self, search_str, state_str = '' ):
         print 'in checkForCountyQuery'
         search_str = re.sub('(?i) *county', '', search_str)
-        if( Counties.objects.filter( RegionName = search_str ).count() > 0 ):
+        county_query_dict = { 'RegionName' : search_str }
+        if ( state_str != '' ):
+            county_query_dict['State'] = state_str
+        if( Counties.objects.filter( **county_query_dict ).count() > 0 ):
             print 'County %s found'%search_str
             self.collection = Counties
             self.query_dict['RegionName'] = search_str
