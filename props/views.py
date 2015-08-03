@@ -195,11 +195,12 @@ class QueryTracker(object):
             city_query_dict = { 'RegionName' : tmp_str }
             if ( state_str != '' ):
                 city_query_dict['State'] = state_str
-            if( Cities.objects.filter( **city_query_dict ).count() > 0 ):
+            city_query = Cities.objects.filter( **city_query_dict )
+            if( city_query.count() > 0 ):
                 print 'City %s found'%search_str
                 self.collection = Cities
                 self.query_dict['RegionName'] = tmp_str
-                self.response['header'] = self.query_dict['RegionName']
+                self.response['header'] = '%s, %s'%(self.query_dict['RegionName'], city_query[0].State)
                 self.response['type'] = 'city'
 
                 # If a state was passed in, add it to the query dict
