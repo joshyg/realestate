@@ -2,6 +2,6 @@ I found some data <a href="http://www.zillow.com/research/data/#bulk">here</a>. 
 
 This repo does not contain the actual db, though it does contain the necessary script to create the db yourself ( scripts/zillow-research-parser.py), which is quick and doesnt require much capacity.  The database is implemented in mongodb, which is accessed in the application via django and monoengine.
 
-You can play with the app yourself at props.joshyg.com
+You can play with the app yourself at <a href="http://props.joshyg.com">props.joshyg.com</a>
 
 Enjoy!
